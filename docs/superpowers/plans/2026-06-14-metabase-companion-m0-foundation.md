@@ -15,6 +15,7 @@
 Every task conforms to these names, paths, and signatures. (Full design: `docs/superpowers/specs/2026-06-14-metabase-rn-mobile-app-design.md`.)
 
 ### Endpoints used in M0
+
 - `GET /api/session/properties` — unauthenticated; capability detection (site name, version, Google client id, password-login enabled).
 - `POST /api/session` — `{ username, password }` → `{ id }` (the session token).
 - `POST /api/session/google_auth` — `{ token }` (Google idToken) → `{ id }`.
@@ -24,22 +25,27 @@ Every task conforms to these names, paths, and signatures. (Full design: `docs/s
 Authenticated requests send header `X-Metabase-Session: <token>`. On HTTP 401 the client calls `onUnauthorized()` once; if it returns a new token, the request is retried once with it, otherwise an `unauthorized` error is thrown.
 
 ### Shared types (verbatim)
+
 ```ts
 // src/api/errors.ts
 export type ApiError =
   | { kind: 'network'; message: string }
-  | { kind: 'unauthorized' }       // HTTP 401
-  | { kind: 'forbidden' }          // HTTP 403
-  | { kind: 'notFound' }           // HTTP 404
+  | { kind: 'unauthorized' } // HTTP 401
+  | { kind: 'forbidden' } // HTTP 403
+  | { kind: 'notFound' } // HTTP 404
   | { kind: 'server'; status: number; message: string }
   | { kind: 'parse'; message: string };
-export class ApiException extends Error { constructor(public readonly error: ApiError) { super(error.kind); } }
+export class ApiException extends Error {
+  constructor(public readonly error: ApiError) {
+    super(error.kind);
+  }
+}
 
 // src/api/client.ts
 export interface MetabaseClientOptions {
-  baseUrl: string;                                 // already normalized
+  baseUrl: string; // already normalized
   getToken: () => string | null;
-  onUnauthorized?: () => Promise<string | null>;   // re-auth hook; returns NEW token or null
+  onUnauthorized?: () => Promise<string | null>; // re-auth hook; returns NEW token or null
 }
 export class MetabaseClient {
   constructor(opts: MetabaseClientOptions);
@@ -49,13 +55,36 @@ export class MetabaseClient {
 }
 
 // src/api/schemas.ts  (Zod schemas mapping raw kebab/snake keys -> camelCase)
-export interface SessionProperties { siteName: string; version: string; googleAuthClientId: string | null; passwordLoginEnabled: boolean; }
-export interface CurrentUser { id: number; email: string; firstName: string | null; lastName: string | null; isSuperuser: boolean; }
-export interface SessionToken { id: string; }
+export interface SessionProperties {
+  siteName: string;
+  version: string;
+  googleAuthClientId: string | null;
+  passwordLoginEnabled: boolean;
+}
+export interface CurrentUser {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  isSuperuser: boolean;
+}
+export interface SessionToken {
+  id: string;
+}
 
 // src/auth/types.ts
-export interface Instance { id: string; baseUrl: string; siteName: string; version: string; }
-export interface Account { instanceId: string; userId: number; email: string; method: 'password' | 'google'; }
+export interface Instance {
+  id: string;
+  baseUrl: string;
+  siteName: string;
+  version: string;
+}
+export interface Account {
+  instanceId: string;
+  userId: number;
+  email: string;
+  method: 'password' | 'google';
+}
 
 // src/lib/url.ts
 export function normalizeBaseUrl(input: string): string; // adds https:// if no scheme; trims trailing slash; throws Error('Invalid URL')
@@ -64,13 +93,23 @@ export function normalizeBaseUrl(input: string): string; // adds https:// if no 
 export function saveToken(instanceId: string, token: string): Promise<void>;
 export function getToken(instanceId: string): Promise<string | null>;
 export function deleteToken(instanceId: string): Promise<void>;
-export function saveCredentials(instanceId: string, username: string, password: string): Promise<void>;
-export function getCredentials(instanceId: string): Promise<{ username: string; password: string } | null>;
+export function saveCredentials(
+  instanceId: string,
+  username: string,
+  password: string,
+): Promise<void>;
+export function getCredentials(
+  instanceId: string,
+): Promise<{ username: string; password: string } | null>;
 export function deleteCredentials(instanceId: string): Promise<void>;
 
 // src/auth/session.ts
 export function fetchSessionProperties(baseUrl: string): Promise<SessionProperties>;
-export function loginWithPassword(baseUrl: string, username: string, password: string): Promise<string>;
+export function loginWithPassword(
+  baseUrl: string,
+  username: string,
+  password: string,
+): Promise<string>;
 export function fetchCurrentUser(client: MetabaseClient): Promise<CurrentUser>;
 export function logout(client: MetabaseClient): Promise<void>;
 
@@ -103,8 +142,16 @@ export interface PreferencesState {
 // src/ui/theme.ts
 export interface Theme {
   mode: 'light' | 'dark';
-  colors: { background: string; surface: string; text: string; textMuted: string; primary: string; border: string; danger: string };
-  spacing: (n: number) => number;   // n * 4
+  colors: {
+    background: string;
+    surface: string;
+    text: string;
+    textMuted: string;
+    primary: string;
+    border: string;
+    danger: string;
+  };
+  spacing: (n: number) => number; // n * 4
   radius: { sm: number; md: number; lg: number };
 }
 export const lightTheme: Theme;
@@ -193,6 +240,7 @@ metabase-rn/
 ### Task 1: Scaffold the Expo app (TypeScript + Expo Router) into the existing non-empty directory
 
 **Files:**
+
 - Create: entire Expo skeleton (`app/`, `package.json`, `tsconfig.json`, `app.json`, `babel.config.js`, etc.)
 - Modify: none yet (existing `docs/`, `.gitignore`, `.git/` must be preserved)
 - Test: none (pure scaffold)
@@ -200,30 +248,37 @@ metabase-rn/
 The current directory `/Users/eric/work/metabase-rn` already contains `docs/`, `.gitignore`, and a `.git` repo, so `create-expo-app .` will refuse to run (it requires an empty target, and we do NOT want it re-initializing git or clobbering our files). The clean approach: scaffold into a temp dir with the default template (Expo Router + TypeScript), then move the generated files in, preserving our `docs/`, `.gitignore`, and `.git`.
 
 1. From the repo root, scaffold the default template (Expo Router + TypeScript) into a sibling temp directory. The default template (no `--template` flag) is already Expo Router + TypeScript in current SDKs:
+
    ```bash
    cd /Users/eric/work
    npx create-expo-app@latest metabase-rn-scaffold
    ```
+
    When it finishes you'll see `✅ Your project is ready!` and an `app/` directory inside `metabase-rn-scaffold`.
 
 2. Remove the scaffold's own git repo and its lockfile-irrelevant junk so we don't import a second `.git` or its README/`.gitignore` over ours:
+
    ```bash
    rm -rf /Users/eric/work/metabase-rn-scaffold/.git
    rm -f  /Users/eric/work/metabase-rn-scaffold/.gitignore
    rm -f  /Users/eric/work/metabase-rn-scaffold/README.md
    ```
+
    (We keep our own `.gitignore` from Task 1 step 5 and write our own README in Task 7.)
 
 3. Move everything (including dotfiles) from the scaffold into our repo root, without overwriting our existing `docs/`:
+
    ```bash
    shopt -s dotglob
    mv /Users/eric/work/metabase-rn-scaffold/* /Users/eric/work/metabase-rn/
    shopt -u dotglob
    rmdir /Users/eric/work/metabase-rn-scaffold
    ```
+
    If `mv` reports a conflict on `app/` (the default template ships an `app/` with example routes), that's fine — our repo had no `app/` yet, so it moves cleanly. The default template's example screens in `app/` will be replaced by other engineers' tasks; leave them for now so the app runs.
 
 4. Append Expo's standard `.gitignore` entries to OUR existing `.gitignore` (don't replace it — preserve whatever is already there). Open `/Users/eric/work/metabase-rn/.gitignore` and ensure it contains at least:
+
    ```gitignore
    # Expo / React Native
    node_modules/
@@ -260,11 +315,13 @@ The current directory `/Users/eric/work/metabase-rn` already contains `docs/`, `
    ```
 
 5. Verify the base install works and the dev server boots (this is the smoke test for scaffolding; you do NOT need a device — Ctrl-C after Metro prints its QR code):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npm install
    npx expo start --no-dev --clear
    ```
+
    Expected: Metro bundler starts and prints `› Metro waiting on exp://...` plus a QR code and `Logs for your project will appear below.` Press `Ctrl-C` to stop.
 
    Note: `@react-native-google-signin/google-signin` and `@shopify/react-native-skia` require a **development build** (`npx expo run:ios` / EAS dev build), NOT Expo Go. The Metro server above still starts fine in Expo Go for everything that doesn't touch those native modules; full auth/chart features need a dev build, added in a later milestone.
@@ -281,42 +338,50 @@ The current directory `/Users/eric/work/metabase-rn` already contains `docs/`, `
 ### Task 2: Install all runtime and dev dependencies
 
 **Files:**
+
 - Modify: `/Users/eric/work/metabase-rn/package.json` (deps added by installers)
 - Test: none (dependency install)
 
 Use `npx expo install` for anything native or Expo-managed (it resolves SDK-compatible versions). Use `npm i -D` only for pure dev/JS tooling. Do NOT pin version numbers — let Expo/npm pick.
 
 1. Core data + state + validation (pure JS, but install via `expo install` so Expo can warn about any RN-specific peer needs):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx expo install @tanstack/react-query zustand zod
    ```
 
 2. i18n stack:
+
    ```bash
    npx expo install i18next react-i18next expo-localization
    ```
 
 3. Secure storage, biometrics, and Google sign-in (all require native modules / config plugins; `expo install` picks compatible versions):
+
    ```bash
    npx expo install expo-secure-store expo-local-authentication @react-native-google-signin/google-signin
    ```
 
 4. Charting + animation + gesture + SVG stack (used in LATER milestones, installed now so the dependency tree is complete and config plugins/babel are wired early):
+
    ```bash
    npx expo install victory-native @shopify/react-native-skia react-native-reanimated react-native-gesture-handler react-native-svg
    ```
 
 5. Dev tooling — testing (jest-expo, RNTL, MSW), lint/format, and TypeScript types. `jest-expo` and the type packages go through `expo install` per Expo's recommendation; the rest are plain dev deps:
+
    ```bash
    npx expo install -- --save-dev jest-expo
    npm i -D jest @types/jest @testing-library/react-native @testing-library/jest-native msw \
             eslint eslint-config-expo prettier eslint-config-prettier eslint-plugin-prettier \
             @types/react typescript
    ```
+
    Note: `react-test-renderer` is pulled in transitively by `jest-expo`/`@testing-library/react-native`; if `npm test` later complains it's missing, add it pinned to the React version with `npx expo install -- --save-dev react-test-renderer`.
 
 6. Wire `react-native-reanimated`'s Babel plugin (required for Reanimated 3+; without it, anything importing Reanimated crashes). Open `/Users/eric/work/metabase-rn/babel.config.js` and ensure it reads exactly:
+
    ```js
    module.exports = function (api) {
      api.cache(true);
@@ -326,13 +391,16 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
      };
    };
    ```
+
    `react-native-reanimated/plugin` MUST be listed last in the `plugins` array.
 
 7. Sanity-check the install (no command should error):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx expo-doctor || true
    ```
+
    Expected: `expo-doctor` reports its checks; warnings about missing native config for google-signin are expected at this stage (resolved in Task 8). It must not hard-fail on dependency resolution.
 
 8. Commit:
@@ -346,10 +414,12 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 3: Configure `tsconfig.json` (strict + `@/*` path alias)
 
 **Files:**
+
 - Modify: `/Users/eric/work/metabase-rn/tsconfig.json`
 - Test: none (config)
 
 1. Replace the contents of `/Users/eric/work/metabase-rn/tsconfig.json` with exactly:
+
    ```json
    {
      "extends": "expo/tsconfig.base",
@@ -362,18 +432,15 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
          "@/app/*": ["app/*"]
        }
      },
-     "include": [
-       "**/*.ts",
-       "**/*.tsx",
-       ".expo/types/**/*.ts",
-       "expo-env.d.ts"
-     ],
+     "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
      "exclude": ["node_modules"]
    }
    ```
+
    `expo/tsconfig.base` already enables JSX and the React Native libs; we layer `strict` + `noUncheckedIndexedAccess` on top. The `@/*` alias maps to `src/*` (the contract's primary alias); `@/app/*` is provided so app routes can import sibling route files when needed.
 
 2. Create the `src/` tree the alias points at (empty dirs would be dropped by git, so add a `.gitkeep`):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    mkdir -p src/api src/auth src/store src/ui/components src/lib
@@ -381,10 +448,12 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 3. Add a `metro.config.js` alias is NOT required (Expo Router + Babel resolve `tsconfig` `paths` automatically via `babel-preset-expo`'s `tsconfigPaths`), but confirm resolution by creating a throwaway import check in the next task's smoke test. For now, verify typecheck wiring is present:
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx tsc --noEmit
    ```
+
    Expected: exits `0` with no output (the default template's example files are already strict-clean). If the default template's example screens emit strict errors, that's acceptable to leave for the screens-owning engineer — but the command must run and report TS errors by file/line, proving the config is active.
 
 4. Commit:
@@ -398,6 +467,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 4: ESLint + Prettier config and npm scripts
 
 **Files:**
+
 - Create: `/Users/eric/work/metabase-rn/.eslintrc.js`
 - Create: `/Users/eric/work/metabase-rn/.eslintignore`
 - Create: `/Users/eric/work/metabase-rn/.prettierrc.json`
@@ -406,6 +476,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 - Test: none (config) — verified by running the scripts
 
 1. Create `/Users/eric/work/metabase-rn/.eslintrc.js` exactly:
+
    ```js
    // ESLint config: Expo's shared config + Prettier integration.
    module.exports = {
@@ -415,18 +486,14 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
      rules: {
        'prettier/prettier': 'error',
      },
-     ignorePatterns: [
-       'node_modules/',
-       'dist/',
-       '.expo/',
-       'coverage/',
-       'babel.config.js',
-     ],
+     ignorePatterns: ['node_modules/', 'dist/', '.expo/', 'coverage/', 'babel.config.js'],
    };
    ```
+
    `plugin:prettier/recommended` (from `eslint-plugin-prettier` + `eslint-config-prettier`) turns off ESLint formatting rules that fight Prettier and surfaces Prettier diffs as lint errors.
 
 2. Create `/Users/eric/work/metabase-rn/.eslintignore` exactly:
+
    ```
    node_modules/
    dist/
@@ -436,6 +503,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 3. Create `/Users/eric/work/metabase-rn/.prettierrc.json` exactly:
+
    ```json
    {
      "semi": true,
@@ -448,6 +516,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 4. Create `/Users/eric/work/metabase-rn/.prettierignore` exactly:
+
    ```
    node_modules/
    dist/
@@ -457,6 +526,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 5. Open `/Users/eric/work/metabase-rn/package.json` and set the `"scripts"` block to exactly (merge with the existing `expo`/`start` scripts the template generated — keep `start`, `android`, `ios`, `web`; add the four below):
+
    ```json
    "scripts": {
      "start": "expo start",
@@ -471,11 +541,13 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 6. Run lint and typecheck to confirm both wire up (the smoke test in Task 5 will confirm `test`):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npm run typecheck
    npm run lint
    ```
+
    Expected: `typecheck` exits `0` silently; `lint` either exits `0` ("no errors") or prints actionable file/line lint errors from the template's example files (fix or `// eslint-disable` as needed so it exits `0`). Both commands must run, proving the scripts are wired.
 
 7. Commit:
@@ -489,6 +561,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 5: Jest setup (jest-expo) + RNTL + module mocks + smoke test
 
 **Files:**
+
 - Create: `/Users/eric/work/metabase-rn/jest.config.js`
 - Create: `/Users/eric/work/metabase-rn/jest.setup.ts`
 - Create: `/Users/eric/work/metabase-rn/src/__tests__/smoke.test.tsx`
@@ -496,6 +569,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 - Test: `/Users/eric/work/metabase-rn/src/__tests__/smoke.test.tsx` (the trivial render test, TDD-style)
 
 1. Create `/Users/eric/work/metabase-rn/jest.config.js` exactly:
+
    ```js
    /** @type {import('jest').Config} */
    module.exports = {
@@ -519,9 +593,11 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
      clearMocks: true,
    };
    ```
+
    The `moduleNameMapper` mirrors the `tsconfig` `@/*` alias so tests resolve it. `transformIgnorePatterns` whitelists the native/ESM packages so Jest transpiles them instead of choking on their ESM syntax.
 
 2. Create `/Users/eric/work/metabase-rn/jest.setup.ts` exactly. This mocks every native module the test environment can't load (`expo-secure-store`, `expo-local-authentication`, google-signin, reanimated, skia):
+
    ```ts
    /* eslint-disable @typescript-eslint/no-var-requires */
    import '@testing-library/jest-native/extend-expect';
@@ -597,6 +673,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 3. **Write the failing smoke test.** Create `/Users/eric/work/metabase-rn/src/__tests__/smoke.test.tsx` exactly:
+
    ```tsx
    import { render, screen } from '@testing-library/react-native';
    import { Text } from 'react-native';
@@ -616,25 +693,32 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 4. **Run it, expect FAIL** (the config/setup files don't exist yet on a fresh checkout, or a path is wrong — run before finalizing to prove the harness reports failures):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npm test
    ```
+
    If `jest.config.js`/`jest.setup.ts` were missing or misnamed, expected output is a failure like:
+
    ```
    ● Test suite failed to run
      Cannot find module 'expo-secure-store' from 'src/__tests__/smoke.test.tsx'
    ```
+
    (or a preset-not-found error). This proves the runner surfaces failures.
 
 5. **Implement** — with the `jest.config.js` and `jest.setup.ts` from steps 1–2 in place, the failure resolves. (No further code needed; the "implementation" is the config + mocks above.)
 
 6. **Run, expect PASS:**
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npm test
    ```
+
    Expected output ends with:
+
    ```
    PASS  src/__tests__/smoke.test.tsx
      test harness smoke test
@@ -656,15 +740,18 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 6: GitHub Actions CI workflow
 
 **Files:**
+
 - Create: `/Users/eric/work/metabase-rn/.github/workflows/ci.yml`
 - Test: none (CI config) — verified on next push/PR
 
 1. Create the directory and file:
+
    ```bash
    mkdir -p /Users/eric/work/metabase-rn/.github/workflows
    ```
 
 2. Create `/Users/eric/work/metabase-rn/.github/workflows/ci.yml` exactly:
+
    ```yaml
    name: CI
 
@@ -705,13 +792,16 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
          - name: Test
            run: npm test -- --ci --coverage --maxWorkers=2
    ```
+
    Notes: `npm ci` requires a committed `package-lock.json` (present after Task 2's `npm install`). Node 20 matches the current Expo SDK's supported LTS. `--ci` makes Jest fail on unexpected snapshots; `--maxWorkers=2` keeps it stable on GitHub's 2-core runners.
 
 3. (Optional local dry-run if `act` is installed; otherwise skip — it's verified by the first push.) Verify the YAML at least parses:
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx --yes js-yaml .github/workflows/ci.yml > /dev/null && echo "YAML OK"
    ```
+
    Expected: `YAML OK`.
 
 4. Commit:
@@ -725,6 +815,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 7: OSS hygiene files (README, CONTRIBUTING, CODE_OF_CONDUCT, LICENSE, CHANGELOG)
 
 **Files:**
+
 - Create: `/Users/eric/work/metabase-rn/README.md`
 - Create: `/Users/eric/work/metabase-rn/CONTRIBUTING.md`
 - Create: `/Users/eric/work/metabase-rn/CODE_OF_CONDUCT.md`
@@ -733,6 +824,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 - Test: none (docs)
 
 1. Create `/Users/eric/work/metabase-rn/README.md` exactly:
+
    ````markdown
    # Metabase Companion
 
@@ -761,15 +853,15 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 
    ### Scripts
 
-   | Command              | Description                          |
-   | -------------------- | ------------------------------------ |
-   | `npm start`          | Start the Expo dev server            |
-   | `npm run ios`        | Start + open iOS simulator           |
-   | `npm run android`    | Start + open Android emulator        |
-   | `npm run typecheck`  | TypeScript type-check (no emit)      |
-   | `npm run lint`       | ESLint (Expo config + Prettier)      |
-   | `npm test`           | Run the Jest test suite              |
-   | `npm run test:watch` | Run Jest in watch mode               |
+   | Command              | Description                     |
+   | -------------------- | ------------------------------- |
+   | `npm start`          | Start the Expo dev server       |
+   | `npm run ios`        | Start + open iOS simulator      |
+   | `npm run android`    | Start + open Android emulator   |
+   | `npm run typecheck`  | TypeScript type-check (no emit) |
+   | `npm run lint`       | ESLint (Expo config + Prettier) |
+   | `npm test`           | Run the Jest test suite         |
+   | `npm run test:watch` | Run Jest in watch mode          |
 
    ### Development build required for some features
 
@@ -799,6 +891,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ````
 
 2. Create `/Users/eric/work/metabase-rn/CONTRIBUTING.md` exactly:
+
    ````markdown
    # Contributing to Metabase Companion
 
@@ -847,7 +940,8 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ````
 
 3. Create `/Users/eric/work/metabase-rn/CODE_OF_CONDUCT.md` exactly:
-   ````markdown
+
+   ```markdown
    # Code of Conduct
 
    ## Our Pledge
@@ -895,9 +989,10 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
    version 2.1, available at
    <https://www.contributor-covenant.org/version/2/1/code_of_conduct.html>.
-   ````
+   ```
 
 4. Create `/Users/eric/work/metabase-rn/LICENSE` exactly (full MIT text, year 2026):
+
    ```
    MIT License
 
@@ -923,7 +1018,8 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    ```
 
 5. Create `/Users/eric/work/metabase-rn/CHANGELOG.md` exactly:
-   ````markdown
+
+   ```markdown
    # Changelog
 
    All notable changes to this project will be documented in this file.
@@ -940,7 +1036,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    - Testing harness: jest-expo + @testing-library/react-native + MSW, with native-module mocks.
    - Continuous integration: GitHub Actions running typecheck, lint, and tests.
    - OSS hygiene: README, CONTRIBUTING, CODE_OF_CONDUCT, LICENSE (MIT), CHANGELOG.
-   ````
+   ```
 
 6. Commit:
    ```bash
@@ -954,10 +1050,12 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
 ### Task 8: App config (`app.json`) — name, slug, scheme, and config plugins
 
 **Files:**
+
 - Modify: `/Users/eric/work/metabase-rn/app.json`
 - Test: none (config) — verified by `expo-doctor` / `expo prebuild` dry run
 
 1. Replace the contents of `/Users/eric/work/metabase-rn/app.json` with exactly the following. Keep any `icon`/`splash` asset paths the template generated if they differ — the load-bearing parts are `name`, `slug`, `scheme`, `plugins`, and the `newArchEnabled` flag that Skia/Reanimated benefit from:
+
    ```json
    {
      "expo": {
@@ -1002,6 +1100,7 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
      }
    }
    ```
+
    Notes:
    - `expo-secure-store` is added to `plugins` so its Face ID usage string / keychain entitlement are configured for dev/prod builds.
    - `expo-local-authentication` does not strictly need a plugin entry for basic use, but if you want a custom iOS Face ID prompt string, add `["expo-local-authentication", { "faceIDPermission": "Use Face ID to unlock Metabase Companion." }]` to `plugins`.
@@ -1009,17 +1108,21 @@ Use `npx expo install` for anything native or Expo-managed (it resolves SDK-comp
    - If the template generated icon/splash paths under `./assets/` (not `./assets/images/`), keep the template's paths rather than the ones above to avoid breaking the build.
 
 2. Verify the config is valid and plugins resolve (a prebuild dry run evaluates every config plugin without writing native dirs):
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx expo config --type prebuild > /dev/null && echo "CONFIG OK"
    ```
+
    Expected: `CONFIG OK`. If a plugin name is wrong, Expo prints `PluginError: Failed to resolve plugin for module "<name>"` — fix the name. The google-signin plugin resolves even with the placeholder `iosUrlScheme` (the value is only consumed at actual prebuild/native-build time).
 
 3. Confirm the app still boots with the new config:
+
    ```bash
    cd /Users/eric/work/metabase-rn
    npx expo start --no-dev --clear
    ```
+
    Expected: Metro starts and shows the app name `Metabase Companion`. Press `Ctrl-C`.
 
 4. Commit:
@@ -1039,6 +1142,7 @@ Sources: [create-expo-app docs](https://docs.expo.dev/more/create-expo/), [React
 ### Task 9: `normalizeBaseUrl` in `src/lib/url.ts`
 
 **Files:**
+
 - Create: `src/lib/url.ts`
 - Test: `src/lib/url.test.ts`
 
@@ -1047,6 +1151,7 @@ This is a pure function with branching logic, so we do strict TDD. Metabase base
 1. Create the directory: `mkdir -p src/lib`.
 
 2. Write the failing test. Create `src/lib/url.test.ts` with this exact content:
+
    ```ts
    import { normalizeBaseUrl } from './url';
 
@@ -1076,11 +1181,15 @@ This is a pure function with branching logic, so we do strict TDD. Metabase base
      });
 
      it('preserves a subpath and strips its trailing slash', () => {
-       expect(normalizeBaseUrl('http://localhost:3000/metabase/')).toBe('http://localhost:3000/metabase');
+       expect(normalizeBaseUrl('http://localhost:3000/metabase/')).toBe(
+         'http://localhost:3000/metabase',
+       );
      });
 
      it('preserves a subpath without a trailing slash', () => {
-       expect(normalizeBaseUrl('https://acme.io/tools/metabase')).toBe('https://acme.io/tools/metabase');
+       expect(normalizeBaseUrl('https://acme.io/tools/metabase')).toBe(
+         'https://acme.io/tools/metabase',
+       );
      });
 
      it("throws Error('Invalid URL') on empty string", () => {
@@ -1106,6 +1215,7 @@ This is a pure function with branching logic, so we do strict TDD. Metabase base
    - Expected output contains: `Cannot find module './url'` (the module does not exist yet), and the run ends with `Tests: ... failed`.
 
 4. Implement. Create `src/lib/url.ts` with this exact content:
+
    ```ts
    /**
     * Normalizes a user-entered Metabase base URL.
@@ -1147,6 +1257,7 @@ This is a pure function with branching logic, so we do strict TDD. Metabase base
      return `${parsed.protocol}//${parsed.host}${path}`;
    }
    ```
+
    Notes for the engineer: `parsed.host` includes the port when present (e.g. `localhost:3000`), so port preservation is free. `URL` is a global in Hermes and in the jest Node environment, so no import is needed. We deliberately do not include `parsed.search`/`parsed.hash` — a base URL should never carry those.
 
 5. Run, expect PASS:
@@ -1164,6 +1275,7 @@ This is a pure function with branching logic, so we do strict TDD. Metabase base
 ### Task 10: API error types in `src/api/errors.ts`
 
 **Files:**
+
 - Create: `src/api/errors.ts`
 - Test: `src/api/errors.test.ts`
 
@@ -1172,6 +1284,7 @@ The `ApiError` union is a type only (no runtime), so it cannot be unit-tested di
 1. Create the directory: `mkdir -p src/api`.
 
 2. Write the failing test. Create `src/api/errors.test.ts` with this exact content:
+
    ```ts
    import { ApiException, type ApiError } from './errors';
 
@@ -1204,6 +1317,7 @@ The `ApiError` union is a type only (no runtime), so it cannot be unit-tested di
    - Expected output contains: `Cannot find module './errors'`, run ends `Tests: ... failed`.
 
 4. Implement. Create `src/api/errors.ts` with this exact content:
+
    ```ts
    export type ApiError =
      | { kind: 'network'; message: string }
@@ -1238,6 +1352,7 @@ The `ApiError` union is a type only (no runtime), so it cannot be unit-tested di
 ### Task 11: Zod schemas in `src/api/schemas.ts`
 
 **Files:**
+
 - Create: `src/api/schemas.ts`
 - Test: `src/api/schemas.test.ts`
 
@@ -1246,12 +1361,9 @@ We map Metabase's raw kebab/snake-case API JSON into the camelCase interfaces fr
 This assumes `zod` is installed. If `npm test` later reports `Cannot find module 'zod'`, run `npx expo install zod` first.
 
 1. Write the failing test. Create `src/api/schemas.test.ts` with this exact content:
+
    ```ts
-   import {
-     SessionPropertiesSchema,
-     CurrentUserSchema,
-     SessionTokenSchema,
-   } from './schemas';
+   import { SessionPropertiesSchema, CurrentUserSchema, SessionTokenSchema } from './schemas';
 
    describe('SessionPropertiesSchema', () => {
      const raw = {
@@ -1367,6 +1479,7 @@ This assumes `zod` is installed. If `npm test` later reports `Cannot find module
    - Expected output contains: `Cannot find module './schemas'`, run ends `Tests: ... failed`.
 
 3. Implement. Create `src/api/schemas.ts` with this exact content:
+
    ```ts
    import { z } from 'zod';
 
@@ -1442,6 +1555,7 @@ This assumes `zod` is installed. If `npm test` later reports `Cannot find module
      .passthrough()
      .transform((raw): SessionToken => ({ id: raw.id }));
    ```
+
    Notes for the engineer: `.passthrough()` keeps unknown keys around through validation (they are then dropped by the explicit object the `.transform` returns), which is exactly the tolerance behavior we want. `.partial()` on `VersionSchema` makes `tag` optional so a `version` object without `tag` parses and falls back to `''`.
 
 4. Run, expect PASS:
@@ -1459,6 +1573,7 @@ This assumes `zod` is installed. If `npm test` later reports `Cannot find module
 ### Task 12: `MetabaseClient` in `src/api/client.ts`
 
 **Files:**
+
 - Create: `src/api/client.ts`
 - Test: `src/api/client.test.ts`
 - Modify: `jest.config.js` (only if MSW polyfills are not already wired — see step 1)
@@ -1468,10 +1583,13 @@ This is the core HTTP client. It builds `baseUrl + path`, injects `Content-Type:
 We test against a mocked HTTP API using MSW (node).
 
 1. Ensure MSW and its polyfills work under jest-expo. MSW v2 needs `fetch`/`Response`/`TextEncoder` etc. in the Node test environment. Verify dev deps exist (install if missing):
+
    ```sh
    npm i -D msw whatwg-fetch
    ```
+
    Then ensure the jest setup polyfills are present. Open `jest.config.js`; it should already reference a setup file from the project-bootstrap task (e.g. `setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']`). Confirm `jest.setup.ts` contains these lines (add them at the top if absent):
+
    ```ts
    import 'whatwg-fetch';
    import { TextEncoder, TextDecoder } from 'util';
@@ -1480,9 +1598,11 @@ We test against a mocked HTTP API using MSW (node).
    // @ts-expect-error
    global.TextDecoder = global.TextDecoder ?? TextDecoder;
    ```
+
    (If the bootstrap task already added `whatwg-fetch` + encoder polyfills, skip this — do not duplicate.)
 
 2. Write the failing test. Create `src/api/client.test.ts` with this exact content:
+
    ```ts
    import { http, HttpResponse } from 'msw';
    import { setupServer } from 'msw/node';
@@ -1498,10 +1618,12 @@ We test against a mocked HTTP API using MSW (node).
    afterEach(() => server.resetHandlers());
    afterAll(() => server.close());
 
-   function makeClient(opts?: Partial<{
-     getToken: () => string | null;
-     onUnauthorized: () => Promise<string | null>;
-   }>) {
+   function makeClient(
+     opts?: Partial<{
+       getToken: () => string | null;
+       onUnauthorized: () => Promise<string | null>;
+     }>,
+   ) {
      return new MetabaseClient({
        baseUrl: BASE,
        getToken: opts?.getToken ?? (() => null),
@@ -1511,9 +1633,7 @@ We test against a mocked HTTP API using MSW (node).
 
    describe('MetabaseClient.get', () => {
      it('fetches and validates a successful response', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => HttpResponse.json({ ok: true })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => HttpResponse.json({ ok: true })));
        const client = makeClient();
        await expect(client.get('/api/ping', PingSchema)).resolves.toEqual({ ok: true });
      });
@@ -1562,9 +1682,7 @@ We test against a mocked HTTP API using MSW (node).
      });
 
      it('throws unauthorized when 401 and onUnauthorized returns null', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 401 })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 401 })));
        const onUnauthorized = jest.fn(async () => null);
        const client = makeClient({ getToken: () => 'stale', onUnauthorized });
        await expect(client.get('/api/ping', PingSchema)).rejects.toMatchObject({
@@ -1574,9 +1692,7 @@ We test against a mocked HTTP API using MSW (node).
      });
 
      it('throws unauthorized when 401 and no onUnauthorized hook is provided', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 401 })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 401 })));
        const client = makeClient({ getToken: () => 'stale' });
        await expect(client.get('/api/ping', PingSchema)).rejects.toMatchObject({
          error: { kind: 'unauthorized' },
@@ -1601,18 +1717,14 @@ We test against a mocked HTTP API using MSW (node).
      });
 
      it('maps 403 to forbidden', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 403 })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 403 })));
        await expect(makeClient().get('/api/ping', PingSchema)).rejects.toMatchObject({
          error: { kind: 'forbidden' },
        });
      });
 
      it('maps 404 to notFound', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 404 })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 404 })));
        await expect(makeClient().get('/api/ping', PingSchema)).rejects.toMatchObject({
          error: { kind: 'notFound' },
        });
@@ -1630,30 +1742,22 @@ We test against a mocked HTTP API using MSW (node).
      });
 
      it('throws parse when the response does not match the schema', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => HttpResponse.json({ ok: 'nope' })),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => HttpResponse.json({ ok: 'nope' })));
        await expect(makeClient().get('/api/ping', PingSchema)).rejects.toMatchObject({
          error: { kind: 'parse' },
        });
      });
 
      it('throws network when the request fails to reach the server', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => HttpResponse.error()),
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => HttpResponse.error()));
        await expect(makeClient().get('/api/ping', PingSchema)).rejects.toMatchObject({
          error: { kind: 'network' },
        });
      });
 
      it('throws an ApiException instance', async () => {
-       server.use(
-         http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 404 })),
-       );
-       await expect(makeClient().get('/api/ping', PingSchema)).rejects.toBeInstanceOf(
-         ApiException,
-       );
+       server.use(http.get(`${BASE}/api/ping`, () => new HttpResponse(null, { status: 404 })));
+       await expect(makeClient().get('/api/ping', PingSchema)).rejects.toBeInstanceOf(ApiException);
      });
    });
 
@@ -1710,6 +1814,7 @@ We test against a mocked HTTP API using MSW (node).
    - Expected output contains: `Cannot find module './client'`, run ends `Tests: ... failed`.
 
 4. Implement. Create `src/api/client.ts` with this exact content:
+
    ```ts
    import type { ZodType } from 'zod';
    import { ApiException, type ApiError } from './errors';
@@ -1804,7 +1909,11 @@ We test against a mocked HTTP API using MSW (node).
        let message = res.statusText || `HTTP ${res.status}`;
        try {
          const data = await res.json();
-         if (data && typeof data === 'object' && typeof (data as { message?: unknown }).message === 'string') {
+         if (
+           data &&
+           typeof data === 'object' &&
+           typeof (data as { message?: unknown }).message === 'string'
+         ) {
            message = (data as { message: string }).message;
          }
        } catch {
@@ -1831,6 +1940,7 @@ We test against a mocked HTTP API using MSW (node).
      }
    }
    ```
+
    Notes for the engineer: the retry path threads the fresh token explicitly through `request(...)` with `isRetry = true`, guaranteeing `onUnauthorized` runs at most once per public call. `MSW`'s `HttpResponse.error()` rejects `fetch`, which is how the `network` test is exercised. `mapErrorStatus` reads Metabase's `{ message }` error body when present (it usually is) and otherwise falls back to a generic message.
 
 5. Run, expect PASS:
@@ -1848,12 +1958,14 @@ We test against a mocked HTTP API using MSW (node).
 ### Task 13: Endpoint helpers in `src/api/endpoints.ts`
 
 **Files:**
+
 - Create: `src/api/endpoints.ts`
 - Test: `src/api/endpoints.test.ts`
 
 Thin typed wrappers over `MetabaseClient` that the auth section will call. Each takes a `MetabaseClient` and uses the schemas from Task 11. We keep these minimal: `getCurrentUser`, `getSessionProperties` (authenticated variant — note the unauthenticated `fetchSessionProperties` lives in the auth section), and `deleteSession`. They are trivial delegations, but we TDD a couple to lock the paths and schema wiring, mocking the client so endpoints are tested in isolation from HTTP.
 
 1. Write the failing test. Create `src/api/endpoints.test.ts` with this exact content:
+
    ```ts
    import { getCurrentUser, getSessionProperties, deleteSession } from './endpoints';
    import type { MetabaseClient } from './client';
@@ -1922,6 +2034,7 @@ Thin typed wrappers over `MetabaseClient` that the auth section will call. Each 
    - Expected output contains: `Cannot find module './endpoints'`, run ends `Tests: ... failed`.
 
 3. Implement. Create `src/api/endpoints.ts` with this exact content:
+
    ```ts
    import type { MetabaseClient } from './client';
    import {
@@ -1972,6 +2085,7 @@ Thin typed wrappers over `MetabaseClient` that the auth section will call. Each 
 Namespaced wrappers around `expo-secure-store`. Tokens use key `mb_token_${instanceId}`; credentials use key `mb_creds_${instanceId}` storing a JSON string `{"username":...,"password":...}`. This is the ONLY place auth secrets are written. All six functions per the contract.
 
 **Files:**
+
 - Create: `src/auth/secureStore.ts`
 - Test: `src/auth/secureStore.test.ts`
 - Modify: `jest.setup.ts` (add the `expo-secure-store` mock if not already present)
@@ -2187,6 +2301,7 @@ Namespaced wrappers around `expo-secure-store`. Tokens use key `mb_token_${insta
 A zustand store of saved Metabase instances + the active instance id, persisted to AsyncStorage (non-sensitive). Tokens are NEVER stored here — only `Instance` metadata (id, baseUrl, siteName, version). Removing the active instance clears `activeInstanceId`.
 
 **Files:**
+
 - Create: `src/store/persistStorage.ts` (a tiny zustand `StateStorage` adapter over AsyncStorage, so it is mockable in one place)
 - Create: `src/store/instances.ts`
 - Test: `src/store/instances.test.ts`
@@ -2337,17 +2452,13 @@ A zustand store of saved Metabase instances + the active instance id, persisted 
          activeInstanceId: null,
          addInstance: (instance) =>
            set((state) => ({
-             instances: [
-               ...state.instances.filter((i) => i.id !== instance.id),
-               instance,
-             ],
+             instances: [...state.instances.filter((i) => i.id !== instance.id), instance],
            })),
          setActiveInstance: (id) => set({ activeInstanceId: id }),
          removeInstance: (id) =>
            set((state) => ({
              instances: state.instances.filter((i) => i.id !== id),
-             activeInstanceId:
-               state.activeInstanceId === id ? null : state.activeInstanceId,
+             activeInstanceId: state.activeInstanceId === id ? null : state.activeInstanceId,
            })),
        }),
        {
@@ -2391,6 +2502,7 @@ A zustand store of saved Metabase instances + the active instance id, persisted 
 A zustand store for UI preferences — theme mode, locale, and the "remember credentials" toggle — persisted via the same AsyncStorage adapter. Defaults: `themeMode: 'system'`, `locale: 'system'`, `rememberCredentials: false`.
 
 **Files:**
+
 - Create: `src/store/preferences.ts`
 - Test: `src/store/preferences.test.ts`
 
@@ -2521,6 +2633,7 @@ A zustand store for UI preferences — theme mode, locale, and the "remember cre
 The auth domain's session functions. `fetchSessionProperties` and `loginWithPassword` are pre-token operations that build a **tokenless** `MetabaseClient` (the contract's `getToken` returns `null`). `fetchCurrentUser` and `logout` take an already-built authenticated client. All HTTP goes through `MetabaseClient`, so error mapping is exercised end-to-end and asserted with MSW.
 
 **Files:**
+
 - Create: `src/auth/session.ts`
 - Test: `src/auth/session.test.ts`
 - Modify: `jest.setup.ts` (ensure MSW lifecycle hooks are registered — add if the api-client task hasn't already)
@@ -2547,12 +2660,7 @@ This depends on `src/api/client.ts`, `src/api/schemas.ts`, and `src/api/errors.t
    ```ts
    import { http, HttpResponse } from 'msw';
    import { setupServer } from 'msw/node';
-   import {
-     fetchSessionProperties,
-     loginWithPassword,
-     fetchCurrentUser,
-     logout,
-   } from './session';
+   import { fetchSessionProperties, loginWithPassword, fetchCurrentUser, logout } from './session';
    import { MetabaseClient } from '../api/client';
    import { ApiException } from '../api/errors';
 
@@ -2627,9 +2735,9 @@ This depends on `src/api/client.ts`, `src/api/schemas.ts`, and `src/api/errors.t
          }),
        );
 
-       await expect(
-         loginWithPassword(BASE, 'me@acme.test', 'hunter2'),
-       ).resolves.toBe('sess-uuid-123');
+       await expect(loginWithPassword(BASE, 'me@acme.test', 'hunter2')).resolves.toBe(
+         'sess-uuid-123',
+       );
      });
 
      it('maps bad credentials (401) to an unauthorized ApiException', async () => {
@@ -2639,9 +2747,9 @@ This depends on `src/api/client.ts`, `src/api/schemas.ts`, and `src/api/errors.t
          ),
        );
 
-       await expect(
-         loginWithPassword(BASE, 'me@acme.test', 'wrong'),
-       ).rejects.toMatchObject({ error: { kind: 'unauthorized' } });
+       await expect(loginWithPassword(BASE, 'me@acme.test', 'wrong')).rejects.toMatchObject({
+         error: { kind: 'unauthorized' },
+       });
      });
    });
 
@@ -2781,6 +2889,7 @@ This depends on `src/api/client.ts`, `src/api/schemas.ts`, and `src/api/errors.t
 > Audience caveat (documented in code): Metabase verifies the idToken's `aud` against its configured Google client id. We set `webClientId` to that exact id so the resulting idToken's audience matches. Whether the native-SDK token is accepted by `/api/session/google_auth` must be validated against a live instance; if rejected, the UI falls back to password login (handled at the screen layer, not here).
 
 **Files:**
+
 - Create: `src/auth/googleAuth.ts`
 - Test: `src/auth/googleAuth.test.ts`
 - Modify: `jest.setup.ts` (add the google-signin mock)
@@ -2864,9 +2973,7 @@ This requires a dev build (config plugin), not Expo Go — relevant for runtime,
        );
 
        await expect(loginWithGoogle(BASE, CLIENT_ID)).resolves.toBe('mb-session-789');
-       expect(configure).toHaveBeenCalledWith(
-         expect.objectContaining({ webClientId: CLIENT_ID }),
-       );
+       expect(configure).toHaveBeenCalledWith(expect.objectContaining({ webClientId: CLIENT_ID }));
      });
 
      it('throws GoogleAuthCancelledError when the user cancels', async () => {
@@ -2886,9 +2993,11 @@ This requires a dev build (config plugin), not Expo Go — relevant for runtime,
      });
 
      it('re-throws non-cancellation sign-in errors as-is', async () => {
-       signIn.mockRejectedValue(Object.assign(new Error('play services'), {
-         code: statusCodes.PLAY_SERVICES_NOT_AVAILABLE,
-       }));
+       signIn.mockRejectedValue(
+         Object.assign(new Error('play services'), {
+           code: statusCodes.PLAY_SERVICES_NOT_AVAILABLE,
+         }),
+       );
        await expect(loginWithGoogle(BASE, CLIENT_ID)).rejects.toThrow('play services');
      });
    });
@@ -3002,6 +3111,7 @@ This requires a dev build (config plugin), not Expo Go — relevant for runtime,
 Thin wrapper over `expo-local-authentication`. `isBiometricAvailable()` is `hasHardwareAsync() && isEnrolledAsync()`. `authenticate(promptMessage)` calls `authenticateAsync({ promptMessage })` and returns its `.success`.
 
 **Files:**
+
 - Create: `src/auth/biometrics.ts`
 - Test: `src/auth/biometrics.test.ts`
 - Modify: `jest.setup.ts` (add the expo-local-authentication mock)
@@ -3141,6 +3251,7 @@ Thin wrapper over `expo-local-authentication`. `isBiometricAvailable()` is `hasH
 ---
 
 Integration notes for the merge step:
+
 - This section depends on the api section exporting these **exact** names from `src/api/schemas.ts`: `SessionPropertiesSchema`, `SessionTokenSchema`, `CurrentUserSchema` (zod consts, not just inferred types) and on `src/api/client.ts` `MetabaseClient` + `src/api/errors.ts` `ApiException`/`ApiError` per the contract.
 - `jest.setup.ts` accumulates mocks from several sections (`expo-secure-store`, `@react-native-async-storage/async-storage`, `@react-native-google-signin/google-signin`, `expo-local-authentication`, MSW lifecycle). Merge into one file; each `jest.mock(...)` block above is idempotent and can be deduped if another section added the same one.
 - New deps introduced here: `@react-native-async-storage/async-storage`, `@react-native-google-signin/google-signin`, `expo-local-authentication` (all via `npx expo install`), and dev dep `msw` (shared with the api section).
@@ -3152,12 +3263,14 @@ Sources: [react-native-google-signin API reference](https://react-native-google-
 ### Task 20: Design tokens — `src/ui/theme.ts`
 
 **Files:**
+
 - Create: `src/ui/theme.ts`
 - Test: `src/ui/theme.test.ts`
 
 Steps:
 
 1. **Write the failing test.** Create `src/ui/theme.test.ts`:
+
    ```ts
    import { lightTheme, darkTheme } from './theme';
 
@@ -3192,12 +3305,15 @@ Steps:
    ```
 
 2. **Run it, expect FAIL.**
+
    ```bash
    npm test -- src/ui/theme.test.ts
    ```
+
    Expected output contains: `Cannot find module './theme'` (or `lightTheme is not a function`), suite **FAILS**.
 
 3. **Implement.** Create `src/ui/theme.ts`:
+
    ```ts
    export interface Theme {
      mode: 'light' | 'dark';
@@ -3250,9 +3366,11 @@ Steps:
    ```
 
 4. **Run, expect PASS.**
+
    ```bash
    npm test -- src/ui/theme.test.ts
    ```
+
    Expected: `Tests: 3 passed, 3 total`.
 
 5. **Commit.**
@@ -3265,6 +3383,7 @@ Steps:
 ### Task 21: Theme context — `src/ui/ThemeProvider.tsx`
 
 **Files:**
+
 - Create: `src/ui/ThemeProvider.tsx`
 - Test: `src/ui/ThemeProvider.test.tsx`
 
@@ -3273,6 +3392,7 @@ Prereq: `src/store/preferences.ts` exists (other section), exporting `usePrefere
 Steps:
 
 1. **Write the failing test.** Create `src/ui/ThemeProvider.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { Text } from 'react-native';
@@ -3322,12 +3442,15 @@ Steps:
    ```
 
 2. **Run it, expect FAIL.**
+
    ```bash
    npm test -- src/ui/ThemeProvider.test.tsx
    ```
+
    Expected: `Cannot find module './ThemeProvider'`, suite **FAILS**.
 
 3. **Implement.** Create `src/ui/ThemeProvider.tsx`:
+
    ```tsx
    import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
    import { useColorScheme } from 'react-native';
@@ -3357,9 +3480,11 @@ Steps:
    ```
 
 4. **Run, expect PASS.**
+
    ```bash
    npm test -- src/ui/ThemeProvider.test.tsx
    ```
+
    Expected: `Tests: 2 passed, 2 total`.
 
 5. **Commit.**
@@ -3372,17 +3497,20 @@ Steps:
 ### Task 22: i18n setup — `src/ui/i18n.ts`
 
 **Files:**
+
 - Create: `src/ui/i18n.ts`
 - Test: `src/ui/i18n.test.ts`
 
 Steps:
 
 1. **Install deps (if not already by other section; safe to re-run).**
+
    ```bash
    npx expo install expo-localization && npm i i18next react-i18next
    ```
 
 2. **Add the jest mock for `expo-localization`.** In the repo's jest setup file `jest.setup.ts` (created by the foundation section; if absent, create it and ensure `jest.config` references it via `setupFilesAfterEnv`), append:
+
    ```ts
    jest.mock('expo-localization', () => ({
      getLocales: () => [{ languageCode: 'en', languageTag: 'en-US' }],
@@ -3390,6 +3518,7 @@ Steps:
    ```
 
 3. **Write the failing test.** Create `src/ui/i18n.test.ts`:
+
    ```ts
    import i18n, { changeLanguage } from './i18n';
 
@@ -3414,12 +3543,15 @@ Steps:
    ```
 
 4. **Run it, expect FAIL.**
+
    ```bash
    npm test -- src/ui/i18n.test.ts
    ```
+
    Expected: `Cannot find module './i18n'`, suite **FAILS**.
 
 5. **Implement.** Create `src/ui/i18n.ts`:
+
    ```ts
    import i18n from 'i18next';
    import { initReactI18next } from 'react-i18next';
@@ -3551,9 +3683,11 @@ Steps:
    ```
 
 6. **Run, expect PASS.**
+
    ```bash
    npm test -- src/ui/i18n.test.ts
    ```
+
    Expected: `Tests: 2 passed, 2 total`.
 
 7. **Commit.**
@@ -3566,6 +3700,7 @@ Steps:
 ### Task 23: App providers — `src/ui/AppProviders.tsx`
 
 **Files:**
+
 - Create: `src/ui/AppProviders.tsx`
 - Test: `src/ui/AppProviders.test.tsx`
 
@@ -3574,11 +3709,13 @@ This is composition glue but still gets one focused render test.
 Steps:
 
 1. **Ensure deps present (safe to re-run).**
+
    ```bash
    npx expo install react-native-gesture-handler && npm i @tanstack/react-query
    ```
 
 2. **Write the failing test.** Create `src/ui/AppProviders.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { Text } from 'react-native';
@@ -3612,12 +3749,15 @@ Steps:
    ```
 
 3. **Run it, expect FAIL.**
+
    ```bash
    npm test -- src/ui/AppProviders.test.tsx
    ```
+
    Expected: `Cannot find module './AppProviders'`, suite **FAILS**.
 
 4. **Implement.** Create `src/ui/AppProviders.tsx`:
+
    ```tsx
    import React, { useState, type ReactNode } from 'react';
    import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -3658,9 +3798,11 @@ Steps:
    ```
 
 5. **Run, expect PASS.**
+
    ```bash
    npm test -- src/ui/AppProviders.test.tsx
    ```
+
    Expected: `Tests: 1 passed, 1 total`.
 
 6. **Commit.**
@@ -3673,6 +3815,7 @@ Steps:
 ### Task 24: Auth-gate hook + root layout — `src/auth/useAuthGate.ts` and `app/_layout.tsx`
 
 **Files:**
+
 - Create: `src/auth/useAuthGate.ts`
 - Create: `app/_layout.tsx`
 - Test: `src/auth/useAuthGate.test.ts`
@@ -3682,6 +3825,7 @@ The pure decision function is TDD'd; the layout is thin wiring around it.
 Steps:
 
 1. **Write the failing test.** Create `src/auth/useAuthGate.test.ts`:
+
    ```ts
    import { decideRoute } from './useAuthGate';
 
@@ -3719,12 +3863,15 @@ Steps:
    ```
 
 2. **Run it, expect FAIL.**
+
    ```bash
    npm test -- src/auth/useAuthGate.test.ts
    ```
+
    Expected: `Cannot find module './useAuthGate'`, suite **FAILS**.
 
 3. **Implement the hook + decision function.** Create `src/auth/useAuthGate.ts`:
+
    ```ts
    export type GateRoute = '/setup' | '/login' | '/unlock' | '/(tabs)';
 
@@ -3746,12 +3893,15 @@ Steps:
    ```
 
 4. **Run, expect PASS.**
+
    ```bash
    npm test -- src/auth/useAuthGate.test.ts
    ```
+
    Expected: `Tests: 4 passed, 4 total`.
 
 5. **Add the stateful hook wrapper** below `decideRoute` in the same file (no separate test; it is thin glue over the tested function and the secure store):
+
    ```ts
    import { useEffect, useState } from 'react';
    import { useInstancesStore } from '../store/instances';
@@ -3814,13 +3964,17 @@ Steps:
      };
    }
    ```
+
    Run typecheck to confirm the additions compile:
+
    ```bash
    npm run typecheck
    ```
+
    Expected: no errors (exit 0).
 
 6. **Implement the root layout.** Create `app/_layout.tsx`:
+
    ```tsx
    import React, { useEffect } from 'react';
    import { ActivityIndicator, View } from 'react-native';
@@ -3838,8 +3992,7 @@ Steps:
        const current = `/${segments.join('/')}`;
        const target = route;
        // Avoid redundant navigation when already on (or under) the target group.
-       const onTarget =
-         target === '/(tabs)' ? segments[0] === '(tabs)' : current === target;
+       const onTarget = target === '/(tabs)' ? segments[0] === '(tabs)' : current === target;
        if (!onTarget) {
          router.replace(target);
        }
@@ -3873,9 +4026,11 @@ Steps:
    ```
 
 7. **Typecheck the layout.**
+
    ```bash
    npm run typecheck
    ```
+
    Expected: no errors (exit 0).
 
 8. **Commit.**
@@ -3888,6 +4043,7 @@ Steps:
 ### Task 25: Setup screen — `app/setup.tsx`
 
 **Files:**
+
 - Create: `app/setup.tsx`
 - Test: `app/setup.test.tsx`
 
@@ -3896,6 +4052,7 @@ Depends on (other sections): `src/lib/url.ts` (`normalizeBaseUrl`), `src/auth/se
 Steps:
 
 1. **Write the failing test.** Create `app/setup.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -3968,12 +4125,15 @@ Steps:
    ```
 
 2. **Run it, expect FAIL.**
+
    ```bash
    npm test -- app/setup.test.tsx
    ```
+
    Expected: `Cannot find module './setup'`, suite **FAILS**.
 
 3. **Implement.** Create `app/setup.tsx`:
+
    ```tsx
    import React, { useState } from 'react';
    import {
@@ -3998,7 +4158,9 @@ Steps:
      const theme = useTheme();
      const { t } = useTranslation();
      const router = useRouter();
-     const addInstance = useInstancesStore((s: { addInstance: (i: Instance) => void }) => s.addInstance);
+     const addInstance = useInstancesStore(
+       (s: { addInstance: (i: Instance) => void }) => s.addInstance,
+     );
      const setActiveInstance = useInstancesStore(
        (s: { setActiveInstance: (id: string) => void }) => s.setActiveInstance,
      );
@@ -4074,7 +4236,11 @@ Steps:
              onPress={onConnect}
              style={[
                styles.button,
-               { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md, opacity: busy ? 0.6 : 1 },
+               {
+                 backgroundColor: theme.colors.primary,
+                 borderRadius: theme.radius.md,
+                 opacity: busy ? 0.6 : 1,
+               },
              ]}
            >
              {busy ? (
@@ -4098,9 +4264,11 @@ Steps:
    ```
 
 4. **Run, expect PASS.**
+
    ```bash
    npm test -- app/setup.test.tsx
    ```
+
    Expected: `Tests: 2 passed, 2 total`.
 
 5. **Commit.**
@@ -4113,6 +4281,7 @@ Steps:
 ### Task 26: Login screen — `app/login.tsx`
 
 **Files:**
+
 - Create: `app/login.tsx`
 - Test: `app/login.test.tsx`
 
@@ -4123,6 +4292,7 @@ Note on storing properties: we keep the most recent `SessionProperties` per inst
 Steps:
 
 1. **Create the properties cache helper.** Create `src/auth/sessionPropsCache.ts`:
+
    ```ts
    import type { SessionProperties } from '../api/schemas';
 
@@ -4136,9 +4306,11 @@ Steps:
      return cache.get(instanceId) ?? null;
    }
    ```
+
    (Setup screen may also call `setSessionProps(instance.id, props)`; that wiring is optional and the login screen refetches when the cache is empty, so it works either way.)
 
 2. **Write the failing test.** Create `app/login.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -4215,12 +4387,15 @@ Steps:
    ```
 
 3. **Run it, expect FAIL.**
+
    ```bash
    npm test -- app/login.test.tsx
    ```
+
    Expected: `Cannot find module './login'`, suite **FAILS**.
 
 4. **Implement.** Create `app/login.tsx`:
+
    ```tsx
    import React, { useEffect, useState } from 'react';
    import {
@@ -4262,7 +4437,7 @@ Steps:
      const [busy, setBusy] = useState(false);
      const [error, setError] = useState<string | null>(null);
      const [googleClientId, setGoogleClientId] = useState<string | null>(
-       instanceId ? getSessionProps(instanceId)?.googleAuthClientId ?? null : null,
+       instanceId ? (getSessionProps(instanceId)?.googleAuthClientId ?? null) : null,
      );
 
      // Refetch properties if not cached, so the Google button can appear.
@@ -4364,9 +4539,20 @@ Steps:
              accessibilityRole="button"
              disabled={busy}
              onPress={onPasswordLogin}
-             style={[styles.button, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md, opacity: busy ? 0.6 : 1 }]}
+             style={[
+               styles.button,
+               {
+                 backgroundColor: theme.colors.primary,
+                 borderRadius: theme.radius.md,
+                 opacity: busy ? 0.6 : 1,
+               },
+             ]}
            >
-             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{t('login.signIn')}</Text>}
+             {busy ? (
+               <ActivityIndicator color="#FFFFFF" />
+             ) : (
+               <Text style={styles.buttonText}>{t('login.signIn')}</Text>
+             )}
            </Pressable>
 
            {googleClientId ? (
@@ -4375,9 +4561,14 @@ Steps:
                accessibilityRole="button"
                disabled={busy}
                onPress={onGoogleLogin}
-               style={[styles.buttonOutline, { borderColor: theme.colors.border, borderRadius: theme.radius.md }]}
+               style={[
+                 styles.buttonOutline,
+                 { borderColor: theme.colors.border, borderRadius: theme.radius.md },
+               ]}
              >
-               <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('login.google')}</Text>
+               <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
+                 {t('login.google')}
+               </Text>
              </Pressable>
            ) : null}
          </View>
@@ -4406,9 +4597,11 @@ Steps:
    ```
 
 5. **Run, expect PASS.**
+
    ```bash
    npm test -- app/login.test.tsx
    ```
+
    Expected: `Tests: 3 passed, 3 total`.
 
 6. **Commit.**
@@ -4421,6 +4614,7 @@ Steps:
 ### Task 27: Unlock screen — `app/unlock.tsx`
 
 **Files:**
+
 - Create: `app/unlock.tsx`
 - Test: `app/unlock.test.tsx`
 
@@ -4429,6 +4623,7 @@ Depends on: `src/auth/biometrics.ts` (`authenticate`), `src/store/instances.ts` 
 Steps:
 
 1. **Add jest mocks for biometrics module (per contract).** Ensure `jest.setup.ts` contains (append if missing):
+
    ```ts
    jest.mock('expo-local-authentication', () => ({
      hasHardwareAsync: jest.fn(async () => true),
@@ -4446,6 +4641,7 @@ Steps:
    ```
 
 2. **Write the failing test.** Create `app/unlock.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { render, screen, waitFor } from '@testing-library/react-native';
@@ -4465,7 +4661,8 @@ Steps:
    }));
    jest.mock('../src/auth/secureStore', () => ({ deleteToken: jest.fn() }));
    jest.mock('../src/store/preferences', () => ({
-     usePreferencesStore: (sel: (s: { themeMode: string }) => unknown) => sel({ themeMode: 'light' }),
+     usePreferencesStore: (sel: (s: { themeMode: string }) => unknown) =>
+       sel({ themeMode: 'light' }),
    }));
 
    import UnlockScreen from './unlock';
@@ -4490,12 +4687,15 @@ Steps:
    ```
 
 3. **Run it, expect FAIL.**
+
    ```bash
    npm test -- app/unlock.test.tsx
    ```
+
    Expected: `Cannot find module './unlock'`, suite **FAILS**.
 
 4. **Implement.** Create `app/unlock.tsx`:
+
    ```tsx
    import React, { useCallback, useEffect, useState } from 'react';
    import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -4552,7 +4752,10 @@ Steps:
                testID="unlock-retry"
                accessibilityRole="button"
                onPress={tryUnlock}
-               style={[styles.button, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md }]}
+               style={[
+                 styles.button,
+                 { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md },
+               ]}
              >
                <Text style={styles.buttonText}>{t('unlock.retry')}</Text>
              </Pressable>
@@ -4560,9 +4763,14 @@ Steps:
                testID="unlock-logout"
                accessibilityRole="button"
                onPress={onLogout}
-               style={[styles.buttonOutline, { borderColor: theme.colors.border, borderRadius: theme.radius.md }]}
+               style={[
+                 styles.buttonOutline,
+                 { borderColor: theme.colors.border, borderRadius: theme.radius.md },
+               ]}
              >
-               <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>{t('unlock.logout')}</Text>
+               <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>
+                 {t('unlock.logout')}
+               </Text>
              </Pressable>
            </View>
          )}
@@ -4574,15 +4782,22 @@ Steps:
      container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
      title: { fontSize: 24, fontWeight: '700', marginBottom: 16 },
      button: { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 32 },
-     buttonOutline: { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 32, borderWidth: 1 },
+     buttonOutline: {
+       alignItems: 'center',
+       paddingVertical: 14,
+       paddingHorizontal: 32,
+       borderWidth: 1,
+     },
      buttonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16 },
    });
    ```
 
 5. **Run, expect PASS.**
+
    ```bash
    npm test -- app/unlock.test.tsx
    ```
+
    Expected: `Tests: 2 passed, 2 total`.
 
 6. **Commit.**
@@ -4595,6 +4810,7 @@ Steps:
 ### Task 28: Tabs layout, home, and settings — `app/(tabs)/_layout.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/settings.tsx`
 
 **Files:**
+
 - Create: `app/(tabs)/_layout.tsx`
 - Create: `app/(tabs)/index.tsx`
 - Create: `app/(tabs)/settings.tsx`
@@ -4605,6 +4821,7 @@ Depends on: `src/api/client.ts` (`MetabaseClient`), `src/auth/session.ts` (`fetc
 Steps:
 
 1. **Create the tabs layout.** Create `app/(tabs)/_layout.tsx`:
+
    ```tsx
    import React from 'react';
    import { Tabs } from 'expo-router';
@@ -4621,7 +4838,10 @@ Steps:
            headerTintColor: theme.colors.text,
            tabBarActiveTintColor: theme.colors.primary,
            tabBarInactiveTintColor: theme.colors.textMuted,
-           tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
+           tabBarStyle: {
+             backgroundColor: theme.colors.surface,
+             borderTopColor: theme.colors.border,
+           },
          }}
        >
          <Tabs.Screen name="index" options={{ title: 'Home' }} />
@@ -4632,6 +4852,7 @@ Steps:
    ```
 
 2. **Create the home screen.** Create `app/(tabs)/index.tsx`:
+
    ```tsx
    import React, { useMemo } from 'react';
    import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -4704,9 +4925,11 @@ Steps:
      container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
    });
    ```
+
    (The `client` building is intentionally simple for M0; M1 introduces a shared client provider. The home screen has no dedicated RNTL test per the contract — one meaningful test per screen, and the settings logout test is the higher-value one for this group.)
 
 3. **Write the failing test for settings.** Create `app/(tabs)/settings.test.tsx`:
+
    ```tsx
    import React from 'react';
    import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -4768,12 +4991,15 @@ Steps:
    ```
 
 4. **Run it, expect FAIL.**
+
    ```bash
    npm test -- "app/(tabs)/settings.test.tsx"
    ```
+
    Expected: `Cannot find module './settings'`, suite **FAILS**.
 
 5. **Implement the settings screen.** Create `app/(tabs)/settings.tsx`:
+
    ```tsx
    import React from 'react';
    import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -4853,7 +5079,9 @@ Steps:
          contentContainerStyle={{ padding: theme.spacing(4), gap: theme.spacing(5) }}
        >
          <View style={{ gap: theme.spacing(2) }}>
-           <Text style={[styles.section, { color: theme.colors.textMuted }]}>{t('settings.theme')}</Text>
+           <Text style={[styles.section, { color: theme.colors.textMuted }]}>
+             {t('settings.theme')}
+           </Text>
            <View style={styles.row}>
              {themeOptions.map((opt) => {
                const active = themeMode === opt.mode;
@@ -4872,7 +5100,9 @@ Steps:
                      },
                    ]}
                  >
-                   <Text style={{ color: active ? '#FFFFFF' : theme.colors.text }}>{opt.label}</Text>
+                   <Text style={{ color: active ? '#FFFFFF' : theme.colors.text }}>
+                     {opt.label}
+                   </Text>
                  </Pressable>
                );
              })}
@@ -4880,7 +5110,9 @@ Steps:
          </View>
 
          <View style={{ gap: theme.spacing(2) }}>
-           <Text style={[styles.section, { color: theme.colors.textMuted }]}>{t('settings.language')}</Text>
+           <Text style={[styles.section, { color: theme.colors.textMuted }]}>
+             {t('settings.language')}
+           </Text>
            <View style={styles.row}>
              {localeOptions.map((opt) => {
                const active = locale === opt.value;
@@ -4899,7 +5131,9 @@ Steps:
                      },
                    ]}
                  >
-                   <Text style={{ color: active ? '#FFFFFF' : theme.colors.text }}>{opt.label}</Text>
+                   <Text style={{ color: active ? '#FFFFFF' : theme.colors.text }}>
+                     {opt.label}
+                   </Text>
                  </Pressable>
                );
              })}
@@ -4910,9 +5144,14 @@ Steps:
            testID="settings-logout"
            accessibilityRole="button"
            onPress={onLogout}
-           style={[styles.logout, { borderColor: theme.colors.danger, borderRadius: theme.radius.md }]}
+           style={[
+             styles.logout,
+             { borderColor: theme.colors.danger, borderRadius: theme.radius.md },
+           ]}
          >
-           <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>{t('settings.logout')}</Text>
+           <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>
+             {t('settings.logout')}
+           </Text>
          </Pressable>
        </ScrollView>
      );
@@ -4927,15 +5166,19 @@ Steps:
    ```
 
 6. **Run, expect PASS.**
+
    ```bash
    npm test -- "app/(tabs)/settings.test.tsx"
    ```
+
    Expected: `Tests: 2 passed, 2 total`.
 
 7. **Typecheck the whole group.**
+
    ```bash
    npm run typecheck
    ```
+
    Expected: no errors (exit 0).
 
 8. **Commit.**
@@ -4948,26 +5191,33 @@ Steps:
 ### Task 29: Lint + typecheck the UI/screens group
 
 **Files:**
+
 - Modify: none (verification only)
 
 Steps:
 
 1. **Run lint on the new files.**
+
    ```bash
    npm run lint
    ```
+
    Expected: exit 0, `0 problems`. If `react-hooks/exhaustive-deps` flags `app/(tabs)/index.tsx`, address by leaving the documented eslint-disable comment on the effect that intentionally loads the token, or refactor per the M1 shared-client note; do not suppress unrelated rules.
 
 2. **Run the full test suite for this group.**
+
    ```bash
    npm test -- src/ui app/setup.test.tsx app/login.test.tsx app/unlock.test.tsx "app/(tabs)/settings.test.tsx" src/auth/useAuthGate.test.ts
    ```
+
    Expected: all suites pass; final line `Tests: <n> passed`.
 
 3. **Run typecheck.**
+
    ```bash
    npm run typecheck
    ```
+
    Expected: exit 0.
 
 4. **Commit (only if lint auto-fixes were applied).**
@@ -4978,6 +5228,7 @@ Steps:
 ---
 
 Notes for the merge/orchestration step:
+
 - This group's tests rely on jest module mocks for `expo-secure-store`, `expo-local-authentication`, `expo-localization`, and `expo-router` (mocked per-test). The cross-cutting mocks for secure-store/local-auth/localization belong in the shared `jest.setup.ts` (referenced by `setupFilesAfterEnv`); Tasks A3 and A8 specify their exact contents — de-duplicate at merge.
 - `@react-native-google-signin/google-signin` and `@shopify/react-native-skia` mocks are owned by the auth/render sections' setup; this group does not import skia and only references google sign-in through the mocked `src/auth/googleAuth` module, so no skia mock is needed here.
 - File paths for reference: `/Users/eric/work/metabase-rn/src/ui/theme.ts`, `/Users/eric/work/metabase-rn/src/ui/ThemeProvider.tsx`, `/Users/eric/work/metabase-rn/src/ui/i18n.ts`, `/Users/eric/work/metabase-rn/src/ui/AppProviders.tsx`, `/Users/eric/work/metabase-rn/src/auth/useAuthGate.ts`, `/Users/eric/work/metabase-rn/src/auth/sessionPropsCache.ts`, `/Users/eric/work/metabase-rn/app/_layout.tsx`, `/Users/eric/work/metabase-rn/app/setup.tsx`, `/Users/eric/work/metabase-rn/app/login.tsx`, `/Users/eric/work/metabase-rn/app/unlock.tsx`, `/Users/eric/work/metabase-rn/app/(tabs)/_layout.tsx`, `/Users/eric/work/metabase-rn/app/(tabs)/index.tsx`, `/Users/eric/work/metabase-rn/app/(tabs)/settings.tsx`.
@@ -4989,6 +5240,7 @@ Notes for the merge/orchestration step:
 **M0 yields working, testable software:** a user can launch the app, enter any Metabase instance URL (validated against `/api/session/properties`), sign in with username/password — or Google when the instance enables it — have the session token stored in the OS secure keystore, unlock the app with biometrics on return, and reach a home screen that confirms the signed-in user via `/api/user/current`. The API client, Zod parsers, auth/session logic, stores, theming, and i18n are all unit-tested; CI runs typecheck + lint + tests on every push/PR.
 
 **Next milestones, each its own spec-driven, writing-plans-formatted plan, built on M0's contracts:**
+
 - **M1 — View core:** browse collections, dashboard view (single-column reflow), card detail; result-normalization layer; Tier-1 renderer subset (table, scalar/trend, bar, line, area, pie); pull-to-refresh.
 - **M2 — Breadth:** remaining Tier-1 renderers (row, combo, scatter, gauge, progress, funnel, waterfall, object), search, dashboard filters, basic drill, theming/i18n polish.
 - **M3 — Long tail:** Tier-2 renderers (pivot, maps, sankey), deeper drill, offline cache.

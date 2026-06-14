@@ -97,6 +97,7 @@ be understood and tested in isolation.
 ## 4. Authentication & Session
 
 ### 4.1 Instance setup
+
 - User enters an instance URL. We normalize it (add `https://`, strip trailing slash, allow
   custom ports/paths) and validate by calling `GET /api/session/properties` (works
   unauthenticated). From the response we read: `site-name`, `version`, enabled auth methods,
@@ -105,6 +106,7 @@ be understood and tested in isolation.
   supports **multiple instances and accounts**, switchable from Settings.
 
 ### 4.2 Login methods (detected per instance)
+
 - **Username / password (always available):**
   `POST /api/session` with `{ "username": "<email>", "password": "<pw>" }` →
   `{ "id": "<uuid>" }`. That `id` is the session token.
@@ -122,6 +124,7 @@ be understood and tested in isolation.
 - **SAML / JWT SSO:** out of scope (Pro/Enterprise only, browser-redirect based).
 
 ### 4.3 Token use, storage, lifecycle
+
 - Every authenticated request sends header `X-Metabase-Session: <uuid>`. We read the token
   from the JSON body, not from `Set-Cookie`.
 - Token is stored in **`expo-secure-store`** (iOS Keychain / Android Keystore), **never**
@@ -153,18 +156,18 @@ be understood and tested in isolation.
 
 Endpoints used (read-only):
 
-| Purpose | Endpoint |
-|---|---|
-| Instance/auth properties (pre-login) | `GET /api/session/properties` |
-| Password login / logout | `POST /api/session` · `DELETE /api/session` |
-| Google login | `POST /api/session/google_auth` |
-| Current user (validate session) | `GET /api/user/current` |
-| Collections tree / items | `GET /api/collection/tree` · `GET /api/collection/:id/items` · `GET /api/collection/root/items` |
-| Dashboard | `GET /api/dashboard/:id` |
-| Run card in dashboard context | `POST /api/dashboard/:dash/dashcard/:dashcard/card/:card/query` |
-| Card (metadata) / run card | `GET /api/card/:id` · `POST /api/card/:id/query` |
-| Ad-hoc / drill query | `POST /api/dataset` |
-| Search | `GET /api/search` |
+| Purpose                              | Endpoint                                                                                        |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Instance/auth properties (pre-login) | `GET /api/session/properties`                                                                   |
+| Password login / logout              | `POST /api/session` · `DELETE /api/session`                                                     |
+| Google login                         | `POST /api/session/google_auth`                                                                 |
+| Current user (validate session)      | `GET /api/user/current`                                                                         |
+| Collections tree / items             | `GET /api/collection/tree` · `GET /api/collection/:id/items` · `GET /api/collection/root/items` |
+| Dashboard                            | `GET /api/dashboard/:id`                                                                        |
+| Run card in dashboard context        | `POST /api/dashboard/:dash/dashcard/:dashcard/card/:card/query`                                 |
+| Card (metadata) / run card           | `GET /api/card/:id` · `POST /api/card/:id/query`                                                |
+| Ad-hoc / drill query                 | `POST /api/dataset`                                                                             |
+| Search                               | `GET /api/search`                                                                               |
 
 ---
 
@@ -184,7 +187,9 @@ Endpoints used (read-only):
 ## 7. Visualization Rendering (Approach B — core of the app)
 
 ### 7.1 Card data model
+
 Two calls per card (they return different things):
+
 - `GET /api/card/:id` → `display` (chart type) and `visualization_settings` (series colors,
   `graph.dimensions`/`graph.metrics`, axis titles, stacking, goal lines, per-column
   formatting, etc.).
@@ -193,7 +198,9 @@ Two calls per card (they return different things):
   `base_type`/`semantic_type`).
 
 ### 7.2 Result normalization (shared by all renderers)
+
 A pure module that:
+
 - Zips `rows[i]` against `cols[j]` by index into labeled records.
 - Coerces by `base_type` (`type/DateTime`→Date, `type/Integer|Float`→number, …).
 - Formats by `semantic_type` + `visualization_settings.column_settings`
@@ -201,12 +208,14 @@ A pure module that:
 - This module is heavily unit-tested with fixtures; renderers consume its typed output only.
 
 ### 7.3 Renderer registry
+
 A `display` → React component map. Adding a chart type = adding one registry entry. A type
 without a renderer yet shows a clear **placeholder** ("This chart type isn't rendered yet")
 during development — the architecture stays "pure native," and the end state is full
 coverage.
 
 ### 7.4 Coverage tiers (delivery order, but all are in scope)
+
 - **Tier 1 (ship first):** `scalar`/number, `smartscalar`/trend, `table`, `bar`, `row`
   (horizontal bar), `line`, `area`, `combo` (line+bar), `pie`, `progress`, `gauge`,
   `funnel`, `waterfall`, `scatter`, `object`/detail.
@@ -214,21 +223,24 @@ coverage.
   grid heatmap), `sankey`.
 
 ### 7.5 Chart substrate
+
 - **Victory Native XL** (Skia + Reanimated + Gesture Handler — all Expo-compatible) for the
   cartesian + pie families (bar/row/line/area/combo/scatter/pie). Strong performance and
   gesture support for large datasets and drill.
 - **Bespoke `react-native-svg`** components for scalar/trend, gauge, progress, funnel,
   waterfall, and the pivot grid.
 - **`react-native-maps`** (or a geo lib) for map types (Tier 2).
-- *(This upgrades the earlier `react-native-gifted-charts` default to match Approach B's full
-  coverage; confirm at spec review — see Open Questions.)*
+- _(This upgrades the earlier `react-native-gifted-charts` default to match Approach B's full
+  coverage; confirm at spec review — see Open Questions.)_
 
 ### 7.6 Visualization settings fidelity
+
 Honor the high-value settings first: series colors, axis titles, stacking, goal lines,
 number/date/currency formatting, legend. Pixel-perfect parity with every Metabase web
 option is explicitly **best-effort, prioritized**, not a launch gate.
 
 ### 7.7 Dashboards
+
 - `GET /api/dashboard/:id` returns dashcards with a grid layout (`col`, `row`, `size_x`,
   `size_y`). On a phone we **reflow to a single column** in reading order, sized sensibly.
 - **Filters:** dashboard `parameters` rendered as mobile controls; changing them re-queries
@@ -240,17 +252,17 @@ option is explicitly **best-effort, prioritized**, not a launch gate.
 
 ## 8. Navigation & Screens (Expo Router, file-based)
 
-| Route | Screen |
-|---|---|
-| `/setup` | Instance URL entry + validation |
-| `/login` | Password + (conditional) Google |
-| `/unlock` | Biometric unlock (returning users) |
-| `/(tabs)/home` | Home: recents/favorites + root collection |
-| `/(tabs)/browse` | Collection tree / items browser |
-| `/(tabs)/search` | Search across content |
+| Route              | Screen                                                               |
+| ------------------ | -------------------------------------------------------------------- |
+| `/setup`           | Instance URL entry + validation                                      |
+| `/login`           | Password + (conditional) Google                                      |
+| `/unlock`          | Biometric unlock (returning users)                                   |
+| `/(tabs)/home`     | Home: recents/favorites + root collection                            |
+| `/(tabs)/browse`   | Collection tree / items browser                                      |
+| `/(tabs)/search`   | Search across content                                                |
 | `/(tabs)/settings` | Instances/accounts, theme, language, biometric toggle, logout, about |
-| `/dashboard/[id]` | Dashboard view (reflowed cards + filters) |
-| `/card/[id]` | Saved question / card detail (native render) |
+| `/dashboard/[id]`  | Dashboard view (reflowed cards + filters)                            |
+| `/card/[id]`       | Saved question / card detail (native render)                         |
 
 ---
 
