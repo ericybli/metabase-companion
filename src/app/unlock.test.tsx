@@ -3,6 +3,8 @@ import { render, screen, userEvent, waitFor } from '@testing-library/react-nativ
 // Initializes the i18next instance (self-runs on import) so useTranslation has a real `t`.
 import '@/ui/i18n';
 
+import UnlockScreen from './unlock';
+
 const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace }) }));
 
@@ -26,8 +28,6 @@ jest.mock('@/auth/secureStore', () => ({
 jest.mock('@/store/preferences', () => ({
   usePreferencesStore: (sel: (s: { themeMode: string }) => unknown) => sel({ themeMode: 'light' }),
 }));
-
-import UnlockScreen from './unlock';
 
 describe('UnlockScreen', () => {
   beforeEach(() => jest.clearAllMocks());

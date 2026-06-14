@@ -3,13 +3,13 @@ import { Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { AppProviders } from './AppProviders';
+import { useTheme } from './ThemeProvider';
+
 jest.mock('../store/preferences', () => ({
   usePreferencesStore: (selector: (s: { themeMode: string }) => unknown) =>
     selector({ themeMode: 'light' }),
 }));
-
-import { AppProviders } from './AppProviders';
-import { useTheme } from './ThemeProvider';
 
 function Probe() {
   const client = useQueryClient(); // throws if no QueryClientProvider above

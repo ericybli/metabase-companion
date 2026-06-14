@@ -3,6 +3,8 @@ import { render, screen, userEvent, waitFor } from '@testing-library/react-nativ
 // Initializes the i18next instance (self-runs on import) so useTranslation has a real `t`.
 import '@/ui/i18n';
 
+import LoginScreen from './login';
+
 const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace }) }));
 
@@ -42,8 +44,6 @@ jest.mock('@/auth/sessionPropsCache', () => ({
   getSessionProps: () => mockProps,
   setSessionProps: jest.fn(),
 }));
-
-import LoginScreen from './login';
 
 describe('LoginScreen', () => {
   beforeEach(() => {
