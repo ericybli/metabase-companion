@@ -1,4 +1,8 @@
 // Jest setup: mock native modules so logic can be unit-tested in Node.
+import 'whatwg-fetch';
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = global.TextEncoder ?? TextEncoder;
+global.TextDecoder = (global.TextDecoder ?? TextDecoder) as typeof global.TextDecoder;
 import 'react-native-gesture-handler/jestSetup';
 
 // expo-secure-store — in-memory implementation
