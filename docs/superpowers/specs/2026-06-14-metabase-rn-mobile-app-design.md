@@ -1,9 +1,10 @@
-# Metabase Mobile (React Native) — Design Spec
+# Metabase Companion (React Native) — Design Spec
 
 - **Date:** 2026-06-14
-- **Status:** Draft for review
-- **Working name:** Metabase Mobile (final name TBD — see Open Questions)
+- **Status:** Approved — proceeding to implementation plan
+- **Name:** Metabase Companion
 - **Repo:** `metabase-rn` (this directory)
+- **Min supported Metabase:** v0.48+ (older may work, not guaranteed)
 
 ---
 
@@ -362,12 +363,9 @@ metabase-rn/
 
 ---
 
-## 17. Open Questions (minimal — defaults chosen, confirm at review)
+## 17. Resolved Decisions (was Open Questions)
 
-1. **App name & trademark.** Working name "Metabase Mobile"; for a public OSS project we
-   should pick a distinct name that doesn't imply official affiliation (e.g. "MetaGlance",
-   "Metabase Companion"). Default: decide before first public release; not a code blocker.
-2. **Minimum Metabase version officially supported.** Default: target a recent OSS release
-   (e.g. v0.48+) and document it; older may work but isn't guaranteed.
-3. **Chart library confirm.** Default: Victory Native XL + react-native-svg (§7.5). Confirm
-   or keep gifted-charts.
+1. **App name:** **Metabase Companion** (confirmed). Note in README that it's an unofficial,
+   community client not affiliated with Metabase, Inc.
+2. **Minimum Metabase version:** **v0.48+** (confirmed); older may work but isn't guaranteed.
+3. **Chart library:** **Victory Native XL + react-native-svg** (confirmed; §7.5).
