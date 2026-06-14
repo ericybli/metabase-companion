@@ -28,19 +28,27 @@ jest.mock('expo-local-authentication', () => ({
 }));
 
 // @react-native-google-signin/google-signin — returns a fake idToken
-jest.mock('@react-native-google-signin/google-signin', () => ({
-  GoogleSignin: {
-    configure: jest.fn(),
-    hasPlayServices: jest.fn(async () => true),
-    signIn: jest.fn(async () => ({ data: { idToken: 'fake-google-id-token' } })),
-    signOut: jest.fn(async () => undefined),
-  },
-  statusCodes: {
+jest.mock('@react-native-google-signin/google-signin', () => {
+  const statusCodes = {
     SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
     IN_PROGRESS: 'IN_PROGRESS',
     PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
-  },
-}));
+  };
+  return {
+    statusCodes,
+    GoogleSignin: {
+      configure: jest.fn(),
+      hasPlayServices: jest.fn(async () => true),
+      signIn: jest.fn(async () => ({ type: 'success', data: { idToken: 'fake-google-id-token' } })),
+      signOut: jest.fn(async () => undefined),
+    },
+    // Real lib: isSuccessResponse(r) === (r.type === 'success')
+    isSuccessResponse: (r: { type?: string }) => r?.type === 'success',
+    // Real lib: true for errors carrying a `code` string.
+    isErrorWithCode: (e: unknown): e is { code: string } =>
+      typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string',
+  };
+});
 
 // expo-localization — default to English
 jest.mock('expo-localization', () => ({
