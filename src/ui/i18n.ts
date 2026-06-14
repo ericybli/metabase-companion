@@ -43,6 +43,7 @@ export const resources = {
         logout: 'Log out',
       },
       home: { signedInAs: 'Signed in as {{email}}' },
+      tabs: { home: 'Home' },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
         unreachable: 'Couldn’t reach that instance. Check the URL and your connection.',
@@ -91,6 +92,7 @@ export const resources = {
         logout: '退出登录',
       },
       home: { signedInAs: '已登录：{{email}}' },
+      tabs: { home: '首页' },
       errors: {
         invalidUrl: '该地址格式不正确。',
         unreachable: '无法连接到该实例。请检查地址和网络连接。',

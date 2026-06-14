@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { normalizeBaseUrl } from '@/lib/url';
 import { fetchSessionProperties } from '@/auth/session';
+import { setSessionProps } from '@/auth/sessionPropsCache';
 import { useInstancesStore } from '@/store/instances';
 import type { Instance } from '@/auth/types';
 
@@ -50,6 +51,7 @@ export default function SetupScreen() {
         siteName: props.siteName,
         version: props.version,
       };
+      setSessionProps(instance.id, props);
       addInstance(instance);
       setActiveInstance(instance.id);
       router.replace('/login');

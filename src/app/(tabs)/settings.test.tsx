@@ -37,12 +37,11 @@ jest.mock('@/store/preferences', () => ({
       setLocale: mockSetLocale,
     }),
 }));
-jest.mock('@/ui/i18n', () => ({ changeLanguage: jest.fn() }));
-jest.mock('@/api/client', () => ({
-  MetabaseClient: class {
-    constructor(_: unknown) {}
-  },
+jest.mock('@/ui/i18n', () => ({
+  ...jest.requireActual('@/ui/i18n'),
+  changeLanguage: jest.fn(),
 }));
+jest.mock('@/api/client', () => ({ MetabaseClient: class {} }));
 
 describe('SettingsScreen', () => {
   beforeEach(() => jest.clearAllMocks());
