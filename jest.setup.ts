@@ -7,16 +7,16 @@ import 'react-native-gesture-handler/jestSetup';
 
 // expo-secure-store — in-memory implementation
 jest.mock('expo-secure-store', () => {
-  const store = new Map<string, string>();
+  const store: Record<string, string> = {};
   return {
-    setItemAsync: jest.fn(async (key: string, value: string) => {
-      store.set(key, value);
-    }),
-    getItemAsync: jest.fn(async (key: string) => (store.has(key) ? store.get(key)! : null)),
-    deleteItemAsync: jest.fn(async (key: string) => {
-      store.delete(key);
-    }),
     __store: store,
+    setItemAsync: jest.fn(async (key: string, value: string) => {
+      store[key] = value;
+    }),
+    getItemAsync: jest.fn(async (key: string) => (key in store ? store[key] : null)),
+    deleteItemAsync: jest.fn(async (key: string) => {
+      delete store[key];
+    }),
   };
 });
 
