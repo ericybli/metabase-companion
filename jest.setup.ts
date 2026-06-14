@@ -46,3 +46,8 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 jest.mock('expo-localization', () => ({
   getLocales: jest.fn(() => [{ languageCode: 'en', languageTag: 'en-US' }]),
 }));
+
+// @react-native-async-storage/async-storage — official in-memory mock
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
