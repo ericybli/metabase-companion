@@ -25,13 +25,10 @@ export function normalizeBaseUrl(input: string): string {
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Invalid URL');
   }
-  if (parsed.hostname === '') {
-    throw new Error('Invalid URL');
-  }
-
-  // Reject hostnames that contain characters invalid in a DNS name or IP address.
-  // Valid hostname chars: letters, digits, hyphens, dots (and IPv6 brackets handled by URL).
-  if (!/^[a-zA-Z0-9\-\.]+$/.test(parsed.hostname)) {
+  if (
+    parsed.hostname === '' ||
+    !/^(\[.*\]|[a-zA-Z0-9][a-zA-Z0-9\-.]*[a-zA-Z0-9]|[a-zA-Z0-9])$/.test(parsed.hostname)
+  ) {
     throw new Error('Invalid URL');
   }
 
