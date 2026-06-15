@@ -99,12 +99,18 @@ export const DashboardListSchema = z.union([
 ]);
 
 // ---- Dashboard detail (GET /api/dashboard/:id) ----
+export interface DashboardTab {
+  id: number;
+  name: string;
+}
+
 export interface DashboardCard {
   dashcardId: number;
   cardId: number;
   name: string;
   display: string | null;
   vizSettings: Record<string, unknown>;
+  tabId: number | null;
 }
 
 /** A dashboard filter/parameter as returned by GET /api/dashboard/:id. */
@@ -121,6 +127,7 @@ export interface DashboardDetail {
   description: string | null;
   cards: DashboardCard[];
   parameters: DashboardParameter[];
+  tabs: DashboardTab[];
 }
 
 // ---- QueryResult (POST .../query) ----
@@ -182,6 +189,7 @@ const DashcardSchema = z
   .object({
     id: z.number(),
     card_id: z.number().nullable().optional(),
+    dashboard_tab_id: z.number().nullable().optional(),
     card: z
       .object({
         id: z.number().optional(),
@@ -192,6 +200,14 @@ const DashcardSchema = z
       .passthrough()
       .nullable()
       .optional(),
+  })
+  .passthrough();
+
+const DashboardTabRawSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    position: z.number().optional(),
   })
   .passthrough();
 
@@ -219,6 +235,7 @@ export const DashboardDetailSchema = z
     dashcards: z.array(DashcardSchema).nullable().optional(),
     ordered_cards: z.array(DashcardSchema).nullable().optional(),
     parameters: z.array(DashboardParameterSchema).nullable().optional(),
+    tabs: z.array(DashboardTabRawSchema).nullable().optional(),
   })
   .passthrough()
   .transform((raw): DashboardDetail => {
@@ -231,13 +248,19 @@ export const DashboardDetailSchema = z
         name: dc.card?.name ?? '',
         display: dc.card?.display ?? null,
         vizSettings: dc.card?.visualization_settings ?? {},
+        tabId: dc.dashboard_tab_id ?? null,
       }));
     const parameters: DashboardParameter[] = raw.parameters ?? [];
+    const rawTabs = raw.tabs ?? [];
+    const tabs: DashboardTab[] = [...rawTabs]
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .map((t) => ({ id: t.id, name: t.name }));
     return {
       id: raw.id,
       name: raw.name,
       description: raw.description ?? null,
       cards,
       parameters,
+      tabs,
     };
   });

@@ -17,7 +17,7 @@ import { useTheme } from '@/ui/ThemeProvider';
 import { ApiException } from '@/api/errors';
 import { createInstanceClient } from '@/api/instanceClient';
 import { getDashboard, runDashcardQuery } from '@/api/endpoints';
-import type { DashboardCard, DashboardParameter } from '@/api/schemas';
+import type { DashboardCard, DashboardParameter, DashboardTab } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
 
@@ -38,6 +38,7 @@ export default function DashboardScreen() {
 
   // The card opened in the fullscreen modal, or null when the modal is closed.
   const [selected, setSelected] = React.useState<SelectedCard | null>(null);
+  const [selectedTabId, setSelectedTabId] = React.useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [instanceId, 'dashboard', dashboardId],
@@ -47,6 +48,22 @@ export default function DashboardScreen() {
       return getDashboard(client, dashboardId);
     },
   });
+
+  const tabs: DashboardTab[] = React.useMemo(() => data?.tabs ?? [], [data?.tabs]);
+  // When tabs first load, default-select the first one.
+  const effectiveTabId = tabs.length > 0 ? (selectedTabId ?? tabs[0]?.id ?? null) : null;
+
+  // Cards to display: if tabs present, filter by selected tab.
+  // Cards with tabId null are shown under the first tab.
+  const firstTabId = tabs[0]?.id ?? null;
+  const visibleCards = React.useMemo(() => {
+    const allCards = data?.cards ?? [];
+    if (tabs.length === 0) return allCards;
+    return allCards.filter((c) => {
+      if (c.tabId === null) return effectiveTabId === firstTabId;
+      return c.tabId === effectiveTabId;
+    });
+  }, [data?.cards, tabs, effectiveTabId, firstTabId]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
@@ -59,6 +76,41 @@ export default function DashboardScreen() {
         </Text>
         <View style={{ width: 48 }} />
       </View>
+
+      {tabs.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+          contentContainerStyle={{ paddingHorizontal: theme.spacing(4) }}
+        >
+          {tabs.map((tab) => {
+            const isActive = tab.id === effectiveTabId;
+            return (
+              <Pressable
+                key={tab.id}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                onPress={() => setSelectedTabId(tab.id)}
+                style={[
+                  styles.tabItem,
+                  isActive && { borderBottomColor: theme.colors.primary, borderBottomWidth: 2 },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: isActive ? theme.colors.primary : theme.colors.textMuted,
+                    fontWeight: isActive ? '600' : '400',
+                    fontSize: 14,
+                  }}
+                >
+                  {tab.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {isLoading ? (
         <View style={styles.center}>
@@ -73,7 +125,7 @@ export default function DashboardScreen() {
       ) : (
         <FlatList
           contentContainerStyle={{ padding: theme.spacing(4), gap: theme.spacing(3) }}
-          data={data?.cards ?? []}
+          data={visibleCards}
           keyExtractor={(c) => String(c.dashcardId)}
           ListEmptyComponent={
             <Text style={{ color: theme.colors.textMuted, textAlign: 'center', marginTop: 32 }}>
@@ -289,4 +341,9 @@ const styles = StyleSheet.create({
   card: { padding: 16, borderWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { marginTop: 12 },
+  tabItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginRight: 4,
+  },
 });

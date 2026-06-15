@@ -191,8 +191,11 @@ describe('DashboardDetailSchema', () => {
       id: 9,
       name: 'S',
       description: null,
-      cards: [{ dashcardId: 1, cardId: 5, name: 'R', display: 'bar', vizSettings: {} }],
+      cards: [
+        { dashcardId: 1, cardId: 5, name: 'R', display: 'bar', vizSettings: {}, tabId: null },
+      ],
       parameters: [],
+      tabs: [],
     });
   });
   it('falls back to ordered_cards on older versions', () => {
@@ -202,7 +205,9 @@ describe('DashboardDetailSchema', () => {
         name: 'T',
         ordered_cards: [{ id: 7, card_id: 8, card: { id: 8, name: 'Q', display: null } }],
       }).cards,
-    ).toEqual([{ dashcardId: 7, cardId: 8, name: 'Q', display: null, vizSettings: {} }]);
+    ).toEqual([
+      { dashcardId: 7, cardId: 8, name: 'Q', display: null, vizSettings: {}, tabId: null },
+    ]);
   });
   it('captures visualization_settings from card when present', () => {
     const vizSettings = { 'graph.dimensions': ['date'], 'graph.metrics': ['revenue'] };
@@ -218,6 +223,62 @@ describe('DashboardDetailSchema', () => {
       ],
     });
     expect(result.cards[0]?.vizSettings).toEqual(vizSettings);
+  });
+
+  it('parses tabs array sorted by position', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 1,
+      name: 'Tabbed',
+      dashcards: [],
+      tabs: [
+        { id: 2, name: 'Second', position: 1 },
+        { id: 1, name: 'First', position: 0 },
+        { id: 3, name: 'Third', position: 2 },
+      ],
+    });
+    expect(result.tabs).toEqual([
+      { id: 1, name: 'First' },
+      { id: 2, name: 'Second' },
+      { id: 3, name: 'Third' },
+    ]);
+  });
+
+  it('defaults tabs to [] when absent', () => {
+    const result = DashboardDetailSchema.parse({ id: 1, name: 'NoTabs', dashcards: [] });
+    expect(result.tabs).toEqual([]);
+  });
+
+  it('parses tabId from dashboard_tab_id on each dashcard', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 1,
+      name: 'T',
+      dashcards: [
+        {
+          id: 10,
+          card_id: 100,
+          dashboard_tab_id: 5,
+          card: { id: 100, name: 'CardA', display: 'bar' },
+        },
+        {
+          id: 11,
+          card_id: 101,
+          dashboard_tab_id: null,
+          card: { id: 101, name: 'CardB', display: 'scalar' },
+        },
+      ],
+      tabs: [{ id: 5, name: 'Tab One' }],
+    });
+    expect(result.cards[0]?.tabId).toBe(5);
+    expect(result.cards[1]?.tabId).toBeNull();
+  });
+
+  it('defaults tabId to null when dashboard_tab_id is absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 1,
+      name: 'T',
+      dashcards: [{ id: 10, card_id: 100, card: { id: 100, name: 'CardA', display: 'bar' } }],
+    });
+    expect(result.cards[0]?.tabId).toBeNull();
   });
 
   it('parses parameters array with id, slug, and default', () => {

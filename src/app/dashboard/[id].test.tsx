@@ -166,6 +166,148 @@ describe('DashboardScreen', () => {
     );
   });
 
+  it('shows all cards when dashboard has no tabs', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'No Tabs',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'Card One',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: null,
+        },
+        {
+          dashcardId: 2,
+          cardId: 6,
+          name: 'Card Two',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: null,
+        },
+      ],
+      parameters: [],
+      tabs: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[1]],
+      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() => expect(screen.getByText('Card One')).toBeTruthy());
+    expect(screen.getByText('Card Two')).toBeTruthy();
+    // No tab bar rendered
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
+
+  it('renders a tab bar and shows only the active tab cards', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Tabbed',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'Tab One Card',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: 10,
+        },
+        {
+          dashcardId: 2,
+          cardId: 6,
+          name: 'Tab Two Card',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: 20,
+        },
+      ],
+      parameters: [],
+      tabs: [
+        { id: 10, name: 'Overview' },
+        { id: 20, name: 'Details' },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[42]],
+      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Tab bar should render
+    await waitFor(() => expect(screen.getByText('Overview')).toBeTruthy());
+    expect(screen.getByText('Details')).toBeTruthy();
+
+    // First tab is selected by default — only tab one's card shows
+    await waitFor(() => expect(screen.getByText('Tab One Card')).toBeTruthy());
+    expect(screen.queryByText('Tab Two Card')).toBeNull();
+
+    // Switch to second tab
+    fireEvent.press(screen.getByText('Details'));
+
+    // Second tab's card now shows, first tab's card is gone
+    await waitFor(() => expect(screen.getByText('Tab Two Card')).toBeTruthy());
+    expect(screen.queryByText('Tab One Card')).toBeNull();
+  });
+
+  it('shows tabId=null cards under the first tab', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Tabbed with null tabId',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'Unassigned Card',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: null,
+        },
+        {
+          dashcardId: 2,
+          cardId: 6,
+          name: 'Tab Two Card',
+          display: 'scalar',
+          vizSettings: {},
+          tabId: 20,
+        },
+      ],
+      parameters: [],
+      tabs: [
+        { id: 10, name: 'First' },
+        { id: 20, name: 'Second' },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[1]],
+      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Unassigned card shows under first tab
+    await waitFor(() => expect(screen.getByText('Unassigned Card')).toBeTruthy());
+    expect(screen.queryByText('Tab Two Card')).toBeNull();
+
+    // Switch to second tab
+    fireEvent.press(screen.getByText('Second'));
+
+    // Tab Two Card now shows, unassigned card is gone
+    await waitFor(() => expect(screen.getByText('Tab Two Card')).toBeTruthy());
+    expect(screen.queryByText('Unassigned Card')).toBeNull();
+  });
+
   it('renders the per-card error state with the ApiException kind when the query fails', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,
