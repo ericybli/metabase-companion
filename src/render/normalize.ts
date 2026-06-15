@@ -15,8 +15,7 @@ export function isNumericType(baseType: string): boolean {
     baseType === 'type/Float' ||
     baseType === 'type/Decimal' ||
     baseType === 'type/BigInteger' ||
-    baseType === 'type/Number' ||
-    baseType === 'type/Currency'
+    baseType === 'type/Number'
   );
 }
 
@@ -50,13 +49,7 @@ export function formatValue(value: unknown, col: QueryColumn): string {
   }
 
   // Date / DateTime / Time types
-  if (
-    baseType === 'type/Date' ||
-    baseType === 'type/DateTime' ||
-    baseType === 'type/Time' ||
-    baseType.startsWith('type/Date') ||
-    baseType.startsWith('type/Time')
-  ) {
+  if (baseType.startsWith('type/Date') || baseType.startsWith('type/Time')) {
     if (typeof value === 'string' || typeof value === 'number') {
       const d = new Date(value);
       if (!isNaN(d.getTime())) {
@@ -137,19 +130,17 @@ export function toChartSeries(
   }
 
   if (!dimensionCol) {
-    dimensionCol = cols[0];
+    // cols is guaranteed non-empty here: metricCol was found above, so cols.length >= 1
+    dimensionCol = cols[0]!;
   }
 
+  const resolvedDimensionCol: QueryColumn = dimensionCol;
   const metricIndex = cols.indexOf(metricCol);
-  const dimensionIndex = dimensionCol ? cols.indexOf(dimensionCol) : -1;
+  const dimensionIndex = cols.indexOf(resolvedDimensionCol);
 
   const labels = rows.map((row) => {
-    const cell = dimensionIndex >= 0 ? row[dimensionIndex] : undefined;
-    return formatValue(
-      cell,
-      dimensionCol ??
-        cols[0] ?? { name: '', displayName: '', baseType: 'type/Text', semanticType: null },
-    );
+    const cell = row[dimensionIndex];
+    return formatValue(cell, resolvedDimensionCol);
   });
 
   const values = rows.map((row) => {

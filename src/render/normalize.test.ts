@@ -41,6 +41,10 @@ describe('isNumericType', () => {
     expect(isNumericType('type/Number')).toBe(true);
   });
 
+  it('returns false for type/Currency (it is a semantic type, not a base type)', () => {
+    expect(isNumericType('type/Currency')).toBe(false);
+  });
+
   it('returns false for type/Text', () => {
     expect(isNumericType('type/Text')).toBe(false);
   });
