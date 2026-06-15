@@ -112,6 +112,55 @@ export interface DashboardDetail {
   cards: DashboardCard[];
 }
 
+// ---- QueryResult (POST .../query) ----
+export interface QueryColumn {
+  name: string;
+  displayName: string;
+  baseType: string; // e.g. 'type/Integer','type/Float','type/Text','type/DateTime'
+  semanticType: string | null; // e.g. 'type/Currency','type/Percentage', or null
+}
+export interface QueryResult {
+  rows: unknown[][];
+  cols: QueryColumn[];
+  rowCount: number;
+}
+
+const QueryColumnSchema = z
+  .object({
+    name: z.string(),
+    display_name: z.string(),
+    base_type: z.string(),
+    semantic_type: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): QueryColumn => ({
+      name: raw.name,
+      displayName: raw.display_name,
+      baseType: raw.base_type,
+      semanticType: raw.semantic_type ?? null,
+    }),
+  );
+
+export const QueryResultSchema = z
+  .object({
+    data: z
+      .object({
+        rows: z.array(z.array(z.unknown())),
+        cols: z.array(QueryColumnSchema),
+      })
+      .passthrough(),
+    row_count: z.number().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): QueryResult => ({
+      rows: raw.data.rows,
+      cols: raw.data.cols,
+      rowCount: raw.row_count ?? raw.data.rows.length,
+    }),
+  );
+
 const DashcardSchema = z
   .object({
     id: z.number(),

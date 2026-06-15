@@ -4,7 +4,124 @@ import {
   SessionTokenSchema,
   DashboardListSchema,
   DashboardDetailSchema,
+  QueryResultSchema,
 } from './schemas';
+
+describe('QueryResultSchema', () => {
+  const realisticPayload = {
+    data: {
+      rows: [
+        [1, 'Alice'],
+        [2, 'Bob'],
+        [3, 'Carol'],
+      ],
+      cols: [
+        {
+          name: 'id',
+          display_name: 'ID',
+          base_type: 'type/Integer',
+          semantic_type: 'type/PK',
+        },
+        {
+          name: 'name',
+          display_name: 'Full Name',
+          base_type: 'type/Text',
+          semantic_type: null,
+        },
+      ],
+    },
+    row_count: 3,
+  };
+
+  it('parses a realistic result with multiple cols and rows', () => {
+    const result = QueryResultSchema.parse(realisticPayload);
+    expect(result.rows).toEqual([
+      [1, 'Alice'],
+      [2, 'Bob'],
+      [3, 'Carol'],
+    ]);
+    expect(result.cols).toEqual([
+      { name: 'id', displayName: 'ID', baseType: 'type/Integer', semanticType: 'type/PK' },
+      { name: 'name', displayName: 'Full Name', baseType: 'type/Text', semanticType: null },
+    ]);
+    expect(result.rowCount).toBe(3);
+  });
+
+  it('maps display_name->displayName, base_type->baseType, semantic_type->semanticType', () => {
+    const result = QueryResultSchema.parse(realisticPayload);
+    const idCol = result.cols[0];
+    expect(idCol).toBeDefined();
+    if (idCol) {
+      expect(idCol.displayName).toBe('ID');
+      expect(idCol.baseType).toBe('type/Integer');
+      expect(idCol.semanticType).toBe('type/PK');
+    }
+  });
+
+  it('defaults semanticType to null when semantic_type is absent', () => {
+    const payload = {
+      ...realisticPayload,
+      data: {
+        ...realisticPayload.data,
+        cols: [
+          {
+            name: 'amount',
+            display_name: 'Amount',
+            base_type: 'type/Float',
+            // semantic_type intentionally omitted
+          },
+        ],
+      },
+    };
+    const result = QueryResultSchema.parse(payload);
+    expect(result.cols[0]?.semanticType).toBeNull();
+  });
+
+  it('defaults rowCount to rows.length when row_count is absent', () => {
+    const { row_count: _omit, ...payloadWithoutRowCount } = realisticPayload;
+    const result = QueryResultSchema.parse(payloadWithoutRowCount);
+    expect(result.rowCount).toBe(3);
+  });
+
+  it('ignores extra keys on the top-level payload', () => {
+    const payload = {
+      ...realisticPayload,
+      context: 'dashboard',
+      running_time: 42,
+      database_id: 1,
+    };
+    const result = QueryResultSchema.parse(payload);
+    expect(result.rows).toHaveLength(3);
+    expect(result.cols).toHaveLength(2);
+  });
+
+  it('ignores extra keys on individual column objects', () => {
+    const payload = {
+      ...realisticPayload,
+      data: {
+        ...realisticPayload.data,
+        cols: [
+          {
+            name: 'revenue',
+            display_name: 'Revenue',
+            base_type: 'type/Float',
+            semantic_type: 'type/Currency',
+            field_ref: ['field', 42, null],
+            effective_type: 'type/Float',
+            fingerprint: { global: { 'distinct-count': 100 } },
+          },
+        ],
+      },
+    };
+    const result = QueryResultSchema.parse(payload);
+    const col = result.cols[0];
+    expect(col).toBeDefined();
+    if (col) {
+      expect(col.name).toBe('revenue');
+      expect(col.semanticType).toBe('type/Currency');
+    }
+  });
+});
 
 describe('DashboardListSchema', () => {
   it('parses a bare array, defaulting description to null', () => {
