@@ -13,6 +13,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { ApiException } from '@/api/errors';
@@ -324,6 +331,9 @@ function DashcardModal({
 const TOP_BAR_HEIGHT = 48;
 /** Comfortable chart height in the portrait (non-rotated) fullscreen view. */
 const PORTRAIT_CHART_HEIGHT = 300;
+/** Pinch-to-zoom scale clamp for the fullscreen chart. */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 5;
 
 function DashcardModalContent({
   dashboardId,
@@ -358,15 +368,17 @@ function DashcardModalContent({
 
   const renderBody = (chartHeight: number): React.ReactElement =>
     data ? (
-      <ScrollView contentContainerStyle={{ padding }}>
-        <CardView
-          display={card.display ?? 'table'}
-          result={data}
-          vizSettings={card.vizSettings}
-          name={card.name}
-          height={chartHeight}
-        />
-      </ScrollView>
+      <ZoomableContent>
+        <ScrollView contentContainerStyle={{ padding }}>
+          <CardView
+            display={card.display ?? 'table'}
+            result={data}
+            vizSettings={card.vizSettings}
+            name={card.name}
+            height={chartHeight}
+          />
+        </ScrollView>
+      </ZoomableContent>
     ) : (
       <View style={styles.center}>
         <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
@@ -425,6 +437,108 @@ function DashcardModalContent({
 }
 
 /**
+ * Pinch-to-zoom + pan wrapper for the fullscreen chart. A {@link GestureDetector}
+ * combines a Pinch (scale), a Pan (translate), and a double-Tap (reset) gesture,
+ * all driving reanimated shared values applied via an inner Animated.View
+ * transform. Scale is clamped to [MIN_ZOOM, MAX_ZOOM]; a double-tap animates back
+ * to identity. The zoom transform lives on an *inner* Animated.View so it composes
+ * with the outer {@link RotatedContainer}'s rotate transform rather than fighting
+ * it. A single tap is allowed to fall through to the chart's tap-for-value tooltip
+ * (the pan gesture requires the single-tap to fail first via Gesture.Exclusive),
+ * so tapping a data point still works when not actively panning.
+ *
+ * Only used in the fullscreen modal — inline cards keep their plain behavior.
+ * Gesture-handler + reanimated only, so it stays Expo-Go-safe.
+ */
+function ZoomableContent({ children }: { children: React.ReactNode }): React.ReactElement {
+  const { t } = useTranslation();
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const reset = React.useCallback(() => {
+    scale.value = withTiming(1);
+    savedScale.value = 1;
+    translateX.value = withTiming(0);
+    translateY.value = withTiming(0);
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  }, [scale, savedScale, translateX, translateY, savedTranslateX, savedTranslateY]);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => {
+      'worklet';
+      const next = savedScale.value * e.scale;
+      scale.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    })
+    .onEnd(() => {
+      'worklet';
+      savedScale.value = scale.value;
+    });
+
+  const pan = Gesture.Pan()
+    .averageTouches(true)
+    .onUpdate((e) => {
+      'worklet';
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
+    })
+    .onEnd(() => {
+      'worklet';
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  // Single tap must fail before pan begins so a lone tap reaches the chart's
+  // tap-for-value tooltip instead of being swallowed as a (zero-distance) pan.
+  const singleTap = Gesture.Tap().numberOfTaps(1);
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      'worklet';
+      runOnJS(reset)();
+    });
+
+  // Double-tap wins over single-tap; pan only starts once single-tap fails.
+  const tap = Gesture.Exclusive(doubleTap, singleTap);
+  const composed = Gesture.Race(tap, Gesture.Simultaneous(pinch, pan));
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <View style={styles.zoomWrap}>
+      <GestureDetector gesture={composed}>
+        <Animated.View testID="fullscreen-zoom" style={[styles.zoomInner, animatedStyle]}>
+          {children}
+        </Animated.View>
+      </GestureDetector>
+      {/* Accessible, testable reset that mirrors the double-tap gesture (gestures
+          themselves are not exercisable under the reanimated/gesture jest mocks). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('dashboard.resetZoom')}
+        testID="fullscreen-zoom-reset"
+        onPress={reset}
+        hitSlop={8}
+        style={styles.zoomReset}
+      >
+        <Text style={styles.zoomResetText}>⤢</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
  * Rotate its children 90° and size them to fill the rotated viewport. The
  * caller passes the SWAPPED screen dimensions: `width` is the rotated content's
  * cross-axis (= screen height minus chrome) and `height` is its main axis
@@ -470,6 +584,20 @@ const styles = StyleSheet.create({
   barTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', marginHorizontal: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   rotateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  zoomWrap: { flex: 1, overflow: 'hidden' },
+  zoomInner: { flex: 1 },
+  zoomReset: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  zoomResetText: { color: '#fff', fontSize: 18, lineHeight: 20 },
   card: { padding: 16, borderWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { marginTop: 12 },

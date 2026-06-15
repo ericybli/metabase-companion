@@ -2,6 +2,7 @@ import React from 'react';
 import { Dimensions } from 'react-native';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Svg from 'react-native-svg';
 import '@/ui/i18n';
 import { ApiException } from '@/api/errors';
@@ -217,6 +218,80 @@ describe('DashboardScreen', () => {
     expect(landscapeHeight).toBeGreaterThan(CHART_HEIGHT);
 
     dimsSpy.mockRestore();
+  });
+
+  it('wraps the fullscreen chart in a pinch/pan GestureDetector with a reset', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Trend', display: 'line', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Jan', 10],
+        ['Feb', 20],
+      ],
+      cols: [
+        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Inline cards keep their plain behavior: no GestureDetector before the modal opens.
+    await waitFor(() => expect(screen.getByLabelText('Trend')).toBeTruthy());
+    expect(screen.UNSAFE_queryAllByType(GestureDetector)).toHaveLength(0);
+    expect(screen.queryByTestId('fullscreen-zoom')).toBeNull();
+
+    // Open the fullscreen modal.
+    fireEvent.press(screen.getByLabelText('Trend'));
+
+    // The fullscreen chart is now wrapped in a GestureDetector with an inner
+    // zoomable Animated.View, and a reset control exists and is pressable.
+    await waitFor(() => expect(screen.getByTestId('fullscreen-zoom')).toBeTruthy());
+    expect(screen.UNSAFE_queryAllByType(GestureDetector).length).toBeGreaterThanOrEqual(1);
+    const resetBtn = screen.getByTestId('fullscreen-zoom-reset');
+    expect(resetBtn).toBeTruthy();
+    // The reset handler runs without throwing (mirrors the double-tap gesture).
+    fireEvent.press(resetBtn);
+    expect(screen.getByTestId('fullscreen-zoom')).toBeTruthy();
+  });
+
+  it('keeps the zoom wrapper composed inside the rotated landscape container', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Trend', display: 'line', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Jan', 10],
+        ['Feb', 20],
+      ],
+      cols: [
+        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() => expect(screen.getByLabelText('Trend')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Trend'));
+    await waitFor(() => expect(screen.getByTestId('fullscreen-rotate')).toBeTruthy());
+
+    // Toggle landscape ON -> the zoom wrapper still renders *inside* the rotated
+    // (90deg) container, so the zoom transform composes with the outer rotate.
+    fireEvent.press(screen.getByTestId('fullscreen-rotate'));
+    const rotated = await screen.findByTestId('fullscreen-rotated');
+    expect(within(rotated).getByTestId('fullscreen-zoom')).toBeTruthy();
   });
 
   it('shows the empty state when the dashboard has no cards', async () => {
