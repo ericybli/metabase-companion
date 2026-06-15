@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { decideRoute, useAuthGate } from './useAuthGate';
+import { useAuthRevisionStore } from '@/store/authRevision';
 
 // Controlled values for the hook's dependencies (must be `mock`-prefixed for jest hoisting).
 let mockActiveInstanceId: string | null = null;
@@ -60,6 +61,7 @@ describe('useAuthGate effect', () => {
     mockRememberCredentials = false;
     mockGetToken.mockReset().mockResolvedValue(null);
     mockIsBiometricAvailable.mockReset().mockResolvedValue(false);
+    useAuthRevisionStore.setState({ revision: 0 });
   });
 
   it('no active instance -> ready at /setup without reading a token', async () => {
@@ -101,5 +103,21 @@ describe('useAuthGate effect', () => {
     const { result } = await renderHook(() => useAuthGate());
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.route).toBe('/(tabs)');
+  });
+
+  it('re-reads the token and leaves /login after a post-login auth-revision bump', async () => {
+    mockActiveInstanceId = 'https://acme.test';
+    mockRememberCredentials = false;
+    mockGetToken.mockResolvedValue(null);
+    const { result } = await renderHook(() => useAuthGate());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.route).toBe('/login');
+
+    // Simulate a successful login: token is now stored and the gate is notified.
+    mockGetToken.mockResolvedValue('tok-1');
+    await act(async () => {
+      useAuthRevisionStore.getState().bumpAuthRevision();
+    });
+    await waitFor(() => expect(result.current.route).toBe('/(tabs)'));
   });
 });

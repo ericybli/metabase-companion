@@ -16,6 +16,7 @@ import { loginWithGoogle } from '@/auth/googleAuth';
 import { saveCredentials, saveToken } from '@/auth/secureStore';
 import { useInstancesStore } from '@/store/instances';
 import { usePreferencesStore } from '@/store/preferences';
+import { useAuthRevisionStore } from '@/store/authRevision';
 import { getSessionProps, setSessionProps } from '@/auth/sessionPropsCache';
 import type { Theme } from '@/ui/theme';
 
@@ -33,6 +34,7 @@ export default function LoginScreen() {
   const setRememberCredentials = usePreferencesStore(
     (s: { setRememberCredentials: (v: boolean) => void }) => s.setRememberCredentials,
   );
+  const bumpAuthRevision = useAuthRevisionStore((s) => s.bumpAuthRevision);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,6 +73,7 @@ export default function LoginScreen() {
       if (rememberCredentials) {
         await saveCredentials(instanceId, email, password);
       }
+      bumpAuthRevision();
       router.replace('/(tabs)');
     } catch (e) {
       const kind = (e as { error?: { kind?: string } })?.error?.kind;
@@ -87,6 +90,7 @@ export default function LoginScreen() {
     try {
       const token = await loginWithGoogle(instanceId, googleClientId);
       await saveToken(instanceId, token);
+      bumpAuthRevision();
       router.replace('/(tabs)');
     } catch {
       setError(t('errors.generic'));

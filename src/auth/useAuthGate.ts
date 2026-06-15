@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useInstancesStore } from '@/store/instances';
 import { usePreferencesStore } from '@/store/preferences';
+import { useAuthRevisionStore } from '@/store/authRevision';
 import { getToken } from '@/auth/secureStore';
 import { isBiometricAvailable } from '@/auth/biometrics';
 
@@ -32,6 +33,7 @@ export interface AuthGate {
 export function useAuthGate(): AuthGate {
   const activeInstanceId = useInstancesStore((s) => s.activeInstanceId);
   const rememberCredentials = usePreferencesStore((s) => s.rememberCredentials);
+  const authRevision = useAuthRevisionStore((s) => s.revision);
   const [ready, setReady] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [biometricRequired, setBiometricRequired] = useState(false);
@@ -60,7 +62,7 @@ export function useAuthGate(): AuthGate {
     return () => {
       cancelled = true;
     };
-  }, [activeInstanceId, rememberCredentials, unlockedThisSession]);
+  }, [activeInstanceId, rememberCredentials, unlockedThisSession, authRevision]);
 
   return {
     ready,
