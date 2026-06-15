@@ -1,4 +1,52 @@
-import { SessionPropertiesSchema, CurrentUserSchema, SessionTokenSchema } from './schemas';
+import {
+  SessionPropertiesSchema,
+  CurrentUserSchema,
+  SessionTokenSchema,
+  DashboardListSchema,
+  DashboardDetailSchema,
+} from './schemas';
+
+describe('DashboardListSchema', () => {
+  it('parses a bare array, defaulting description to null', () => {
+    expect(DashboardListSchema.parse([{ id: 1, name: 'A' }])).toEqual([
+      { id: 1, name: 'A', description: null },
+    ]);
+  });
+  it('parses a { data: [...] } envelope', () => {
+    expect(DashboardListSchema.parse({ data: [{ id: 2, name: 'B', description: 'd' }] })).toEqual([
+      { id: 2, name: 'B', description: 'd' },
+    ]);
+  });
+});
+
+describe('DashboardDetailSchema', () => {
+  it('keeps only real cards (filters virtual) from dashcards', () => {
+    expect(
+      DashboardDetailSchema.parse({
+        id: 9,
+        name: 'S',
+        dashcards: [
+          { id: 1, card_id: 5, card: { id: 5, name: 'R', display: 'bar' } },
+          { id: 2, card_id: null, card: null },
+        ],
+      }),
+    ).toEqual({
+      id: 9,
+      name: 'S',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'R', display: 'bar' }],
+    });
+  });
+  it('falls back to ordered_cards on older versions', () => {
+    expect(
+      DashboardDetailSchema.parse({
+        id: 3,
+        name: 'T',
+        ordered_cards: [{ id: 7, card_id: 8, card: { id: 8, name: 'Q', display: null } }],
+      }).cards,
+    ).toEqual([{ dashcardId: 7, cardId: 8, name: 'Q', display: null }]);
+  });
+});
 
 describe('SessionPropertiesSchema', () => {
   const raw = {

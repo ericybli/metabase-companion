@@ -42,8 +42,17 @@ export const resources = {
         langSystem: 'System',
         logout: 'Log out',
       },
-      home: { signedInAs: 'Signed in as {{email}}' },
+      home: {
+        signedInAs: 'Signed in as {{email}}',
+        title: 'Dashboards',
+        empty: 'No dashboards yet.',
+      },
       tabs: { home: 'Home' },
+      dashboard: {
+        back: 'Back',
+        empty: 'This dashboard has no cards.',
+        chartsComingSoon: 'Chart rendering is coming soon.',
+      },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
         unreachable: 'Couldn’t reach that instance. Check the URL and your connection.',
@@ -91,8 +100,17 @@ export const resources = {
         langSystem: '跟随系统',
         logout: '退出登录',
       },
-      home: { signedInAs: '已登录：{{email}}' },
+      home: {
+        signedInAs: '已登录：{{email}}',
+        title: '仪表盘',
+        empty: '还没有仪表盘。',
+      },
       tabs: { home: '首页' },
+      dashboard: {
+        back: '返回',
+        empty: '该仪表盘没有卡片。',
+        chartsComingSoon: '图表渲染即将上线。',
+      },
       errors: {
         invalidUrl: '该地址格式不正确。',
         unreachable: '无法连接到该实例。请检查地址和网络连接。',

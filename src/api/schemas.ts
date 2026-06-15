@@ -66,3 +66,92 @@ export const SessionTokenSchema = z
   .object({ id: z.string() })
   .passthrough()
   .transform((raw): SessionToken => ({ id: raw.id }));
+
+// ---- Dashboard list (GET /api/dashboard) ----
+export interface DashboardSummary {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export const DashboardSummarySchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): DashboardSummary => ({
+      id: raw.id,
+      name: raw.name,
+      description: raw.description ?? null,
+    }),
+  );
+
+// Tolerant of both a bare array and a `{ data: [...] }` envelope across versions.
+export const DashboardListSchema = z.union([
+  z.array(DashboardSummarySchema),
+  z
+    .object({ data: z.array(DashboardSummarySchema) })
+    .passthrough()
+    .transform((o) => o.data),
+]);
+
+// ---- Dashboard detail (GET /api/dashboard/:id) ----
+export interface DashboardCard {
+  dashcardId: number;
+  cardId: number;
+  name: string;
+  display: string | null;
+}
+export interface DashboardDetail {
+  id: number;
+  name: string;
+  description: string | null;
+  cards: DashboardCard[];
+}
+
+const DashcardSchema = z
+  .object({
+    id: z.number(),
+    card_id: z.number().nullable().optional(),
+    card: z
+      .object({
+        id: z.number().optional(),
+        name: z.string().nullable().optional(),
+        display: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+  })
+  .passthrough();
+
+export const DashboardDetailSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    // `dashcards` (v0.50+) with `ordered_cards` as the older fallback.
+    dashcards: z.array(DashcardSchema).nullable().optional(),
+    ordered_cards: z.array(DashcardSchema).nullable().optional(),
+  })
+  .passthrough()
+  .transform((raw): DashboardDetail => {
+    const dcs = raw.dashcards ?? raw.ordered_cards ?? [];
+    const cards: DashboardCard[] = dcs
+      .filter((dc): dc is typeof dc & { card_id: number } => dc.card_id != null && dc.card != null)
+      .map((dc) => ({
+        dashcardId: dc.id,
+        cardId: dc.card_id,
+        name: dc.card?.name ?? '',
+        display: dc.card?.display ?? null,
+      }));
+    return {
+      id: raw.id,
+      name: raw.name,
+      description: raw.description ?? null,
+      cards,
+    };
+  });

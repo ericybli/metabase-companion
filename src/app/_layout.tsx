@@ -11,12 +11,15 @@ function Gate() {
 
   useEffect(() => {
     if (!ready) return;
-    const current = `/${segments.join('/')}`;
-    const target = route;
-    // Avoid redundant navigation when already on (or under) the target group.
-    const onTarget = target === '/(tabs)' ? segments[0] === '(tabs)' : current === target;
-    if (!onTarget) {
-      router.replace(target);
+    const root: string = segments[0] ?? '';
+    const onAuthScreen = root === 'setup' || root === 'login' || root === 'unlock';
+    if (route === '/(tabs)') {
+      // Authenticated: allow any in-app route (tabs, dashboard, card, …).
+      // Only redirect away from the auth screens or the empty initial route.
+      if (root === '' || onAuthScreen) router.replace('/(tabs)');
+    } else if (`/${root}` !== route) {
+      // Unauthenticated: force the correct auth screen (/setup | /login | /unlock).
+      router.replace(route);
     }
   }, [ready, route, segments, router]);
 

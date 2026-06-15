@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (conditional) Google sign-in; session token stored in the OS secure keystore with biometric
   unlock; persisted instances + preferences stores; theming (light/dark) and i18n (en/zh);
   Expo Router screens (setup, login, unlock, tabs: home + settings) with an auth-gating root layout.
+- **M1 (in progress)** — Home now lists your dashboards (pull-to-refresh, loading/empty/error states);
+  tapping one opens a dashboard view listing its cards. Native chart rendering is the next step.
+  Disabled Expo Router `typedRoutes` (too much friction with dynamic routes).
 
 ### Notes
 
