@@ -3,6 +3,7 @@ import {
   domainMax,
   domainMaxMulti,
   getBarGeometry,
+  getCategoryBands,
   getGroupedBarGeometry,
   getLinePoints,
   getLinePointsWithMax,
@@ -124,6 +125,30 @@ describe('getGroupedBarGeometry', () => {
     const plot = getPlotArea();
     expect(getGroupedBarGeometry([], 3, plot, 1)).toEqual([]);
     expect(getGroupedBarGeometry([[1, 2]], 0, plot, 1)).toEqual([]);
+  });
+});
+
+describe('getCategoryBands', () => {
+  it('tiles the inner plot width edge-to-edge with one band per index', () => {
+    const plot = getPlotArea(320, 220);
+    const bands = getCategoryBands(4, plot);
+    expect(bands).toHaveLength(4);
+    // First band starts at the inner left, last band ends at the inner right.
+    expect(bands[0]!.x).toBeCloseTo(plot.innerLeft);
+    expect(bands[3]!.x + bands[3]!.width).toBeCloseTo(plot.innerRight);
+    // Bands are contiguous and equal width; center sits between the edges.
+    bands.forEach((band, i) => {
+      expect(band.index).toBe(i);
+      expect(band.width).toBeCloseTo(plot.innerWidth / 4);
+      expect(band.centerX).toBeCloseTo(band.x + band.width / 2);
+    });
+    expect(bands[1]!.x).toBeCloseTo(bands[0]!.x + bands[0]!.width);
+  });
+
+  it('returns an empty array when count is non-positive', () => {
+    const plot = getPlotArea();
+    expect(getCategoryBands(0, plot)).toEqual([]);
+    expect(getCategoryBands(-3, plot)).toEqual([]);
   });
 });
 

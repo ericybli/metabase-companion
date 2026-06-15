@@ -122,6 +122,45 @@ describe('DashboardScreen', () => {
     expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []);
   });
 
+  it('toggles a landscape (rotated) container in the fullscreen modal', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[42]],
+      cols: [
+        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Open the fullscreen modal.
+    await waitFor(() => expect(screen.getByLabelText('Revenue')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Revenue'));
+
+    // The rotate toggle appears; nothing is rotated yet.
+    await waitFor(() => expect(screen.getByTestId('fullscreen-rotate')).toBeTruthy());
+    expect(screen.queryByTestId('fullscreen-rotated')).toBeNull();
+
+    // Toggle ON -> a rotated container appears with a 90deg transform.
+    fireEvent.press(screen.getByTestId('fullscreen-rotate'));
+    const rotated = await screen.findByTestId('fullscreen-rotated');
+    const style = Array.isArray(rotated.props.style)
+      ? Object.assign({}, ...rotated.props.style)
+      : rotated.props.style;
+    expect(style.transform).toContainEqual({ rotate: '90deg' });
+
+    // Toggle OFF -> the rotated container is gone.
+    fireEvent.press(screen.getByTestId('fullscreen-rotate'));
+    await waitFor(() => expect(screen.queryByTestId('fullscreen-rotated')).toBeNull());
+  });
+
   it('shows the empty state when the dashboard has no cards', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,

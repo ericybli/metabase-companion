@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Path, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { AreaChartView } from './AreaChartView';
@@ -83,6 +83,23 @@ describe('AreaChartView', () => {
     const texts = labels.map((node) => node.props.children);
     expect(texts).toContain('Jan');
     expect(texts).toContain('Dec');
+  });
+
+  it('shows a tooltip with each series value when an x-position is tapped', async () => {
+    await render(<AreaChartView result={twoSeries} vizSettings={{}} />);
+    expect(screen.queryByTestId('chart-tooltip')).toBeNull();
+
+    // Tap the second point (Feb: Visits=25, Signups=12).
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+
+    expect(screen.getByTestId('chart-tooltip')).toBeTruthy();
+    expect(screen.getByText('Feb')).toBeTruthy();
+    expect(screen.getByText('Visits: 25')).toBeTruthy();
+    expect(screen.getByText('Signups: 12')).toBeTruthy();
+
+    // Tapping the same point again dismisses the tooltip.
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+    expect(screen.queryByTestId('chart-tooltip')).toBeNull();
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

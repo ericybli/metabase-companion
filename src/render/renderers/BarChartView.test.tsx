@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Rect, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { BarChartView } from './BarChartView';
@@ -63,7 +63,9 @@ describe('BarChartView', () => {
       <BarChartView result={twoSeries} vizSettings={{}} />,
     );
     // 2 series x 3 labels = 6 <Rect> bars (the baseline is a <Line>, not a Rect).
-    expect(UNSAFE_getAllByType(Rect)).toHaveLength(6);
+    // Transparent tap-for-value bands are also <Rect>s, so filter them out.
+    const bars = UNSAFE_getAllByType(Rect).filter((n) => n.props.fill !== 'transparent');
+    expect(bars).toHaveLength(6);
     // Legend swatches + names render as plain RN <Text>, matchable by getByText.
     expect(screen.getByText('Total')).toBeTruthy();
     expect(screen.getByText('Returns')).toBeTruthy();
@@ -81,6 +83,38 @@ describe('BarChartView', () => {
     const texts = labels.map((node) => node.props.children);
     expect(texts).toContain('Jan');
     expect(texts).toContain('Dec');
+  });
+
+  it('renders one transparent touch band per label for tap-for-value', async () => {
+    await render(<BarChartView result={threePoint} vizSettings={{}} />);
+    // One touch target per x-index, addressable by testID.
+    expect(screen.getByTestId('chart-touch-0')).toBeTruthy();
+    expect(screen.getByTestId('chart-touch-1')).toBeTruthy();
+    expect(screen.getByTestId('chart-touch-2')).toBeTruthy();
+  });
+
+  it('shows a tooltip with the label and each series value when a column is tapped', async () => {
+    await render(<BarChartView result={twoSeries} vizSettings={{}} />);
+    // No tooltip until a column is tapped.
+    expect(screen.queryByTestId('chart-tooltip')).toBeNull();
+
+    // Tap the second column (Feb: Total=25, Returns=12).
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+
+    expect(screen.getByTestId('chart-tooltip')).toBeTruthy();
+    // The x label and BOTH series' values surface (multi-series aware).
+    expect(screen.getByText('Feb')).toBeTruthy();
+    expect(screen.getByText('Total: 25')).toBeTruthy();
+    expect(screen.getByText('Returns: 12')).toBeTruthy();
+  });
+
+  it('clears the tooltip when the same column is tapped again', async () => {
+    await render(<BarChartView result={threePoint} vizSettings={{}} />);
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+    expect(screen.getByTestId('chart-tooltip')).toBeTruthy();
+    // Tapping the same column toggles it off.
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+    expect(screen.queryByTestId('chart-tooltip')).toBeNull();
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

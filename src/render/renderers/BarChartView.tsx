@@ -8,6 +8,7 @@ import {
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
   domainMaxMulti,
+  getCategoryBands,
   getGroupedBarGeometry,
   getPlotArea,
   paletteColor,
@@ -15,6 +16,7 @@ import {
   truncateLabel,
 } from '@/render/chartScale';
 import { ChartLegend } from './ChartLegend';
+import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import type { QueryResult } from '@/api/schemas';
 
 export interface BarChartViewProps {
@@ -32,6 +34,7 @@ export function BarChartView({ result, vizSettings }: BarChartViewProps): React.
   const theme = useTheme();
   const { t } = useTranslation();
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
+  const { selectedIndex, toggleIndex } = useChartTooltip();
 
   const data = toChartData(result, vizSettings);
 
@@ -64,6 +67,9 @@ export function BarChartView({ result, vizSettings }: BarChartViewProps): React.
     }
   }
   const multi = data.series.length > 1;
+  // One full-height transparent touch band per label for tap-for-value.
+  const touchBands = getCategoryBands(data.labels.length, plot);
+  const anchorX = selectedIndex !== null ? (touchBands[selectedIndex]?.centerX ?? 0) : 0;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -73,39 +79,54 @@ export function BarChartView({ result, vizSettings }: BarChartViewProps): React.
         </Text>
       ) : null}
       {multi ? <ChartLegend names={data.series.map((s) => s.name)} colorAt={paletteColor} /> : null}
-      <Svg width={width} height={CHART_HEIGHT}>
-        <Line
-          x1={plot.innerLeft}
-          y1={plot.innerBottom}
-          x2={plot.innerRight}
-          y2={plot.innerBottom}
-          stroke={theme.colors.border}
-          strokeWidth={1}
-        />
-        {bars.map((bar, i) => (
-          <Rect
-            key={`bar-${i}`}
-            x={bar.x}
-            y={bar.y}
-            width={bar.width}
-            height={bar.height}
-            rx={2}
-            fill={paletteColor(bar.seriesIndex)}
+      <View>
+        <Svg width={width} height={CHART_HEIGHT}>
+          <Line
+            x1={plot.innerLeft}
+            y1={plot.innerBottom}
+            x2={plot.innerRight}
+            y2={plot.innerBottom}
+            stroke={theme.colors.border}
+            strokeWidth={1}
           />
-        ))}
-        {labelIndices.map((i) => (
-          <SvgText
-            key={`label-${i}`}
-            x={bandCenters.get(i) ?? plot.innerLeft}
-            y={plot.innerBottom + 16}
-            fontSize={9}
-            fill={theme.colors.textMuted}
-            textAnchor="middle"
-          >
-            {truncateLabel(data.labels[i] ?? '')}
-          </SvgText>
-        ))}
-      </Svg>
+          {bars.map((bar, i) => (
+            <Rect
+              key={`bar-${i}`}
+              x={bar.x}
+              y={bar.y}
+              width={bar.width}
+              height={bar.height}
+              rx={2}
+              fill={paletteColor(bar.seriesIndex)}
+            />
+          ))}
+          {labelIndices.map((i) => (
+            <SvgText
+              key={`label-${i}`}
+              x={bandCenters.get(i) ?? plot.innerLeft}
+              y={plot.innerBottom + 16}
+              fontSize={9}
+              fill={theme.colors.textMuted}
+              textAnchor="middle"
+            >
+              {truncateLabel(data.labels[i] ?? '')}
+            </SvgText>
+          ))}
+          {touchBands.map((band) => (
+            <Rect
+              key={`touch-${band.index}`}
+              testID={`chart-touch-${band.index}`}
+              x={band.x}
+              y={plot.innerTop}
+              width={band.width}
+              height={plot.innerBottom - plot.innerTop}
+              fill="transparent"
+              onPress={() => toggleIndex(band.index)}
+            />
+          ))}
+        </Svg>
+        <ChartTooltip data={data} selectedIndex={selectedIndex} anchorX={anchorX} width={width} />
+      </View>
     </View>
   );
 }

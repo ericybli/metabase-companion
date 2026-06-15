@@ -53,6 +53,7 @@ export const resources = {
         empty: 'This dashboard has no cards.',
         filters: 'Filters',
         apply: 'Apply',
+        rotate: 'Rotate',
       },
       chart: {
         noData: 'No data',
@@ -118,6 +119,7 @@ export const resources = {
         empty: '该仪表盘没有卡片。',
         filters: '筛选',
         apply: '应用',
+        rotate: '旋转',
       },
       chart: {
         noData: '暂无数据',

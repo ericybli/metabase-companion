@@ -351,6 +351,34 @@ function arcPath(
   ].join(' ');
 }
 
+export interface CategoryBand {
+  /** Index of the data point / label this band covers. */
+  index: number;
+  /** Left edge of the band (px). */
+  x: number;
+  /** Band width (px). */
+  width: number;
+  /** Center x of the band (px) — where the value sits / tooltip anchors. */
+  centerX: number;
+}
+
+/**
+ * Compute one full-height touch band per data index across the plot area. Each
+ * band is a vertical slice of the inner plot width, so a transparent <Rect>
+ * drawn over it makes that x-position tappable (tap-for-value). Bands tile the
+ * inner width edge-to-edge with no gaps. Returns an empty array when count <= 0.
+ */
+export function getCategoryBands(count: number, plot: PlotArea): CategoryBand[] {
+  if (count <= 0) {
+    return [];
+  }
+  const bandWidth = plot.innerWidth / count;
+  return Array.from({ length: count }, (_, index) => {
+    const x = plot.innerLeft + index * bandWidth;
+    return { index, x, width: bandWidth, centerX: x + bandWidth / 2 };
+  });
+}
+
 /** Truncate an axis label to `max` chars, appending an ellipsis when clipped. */
 export function truncateLabel(label: string, max = 8): string {
   if (label.length <= max) {

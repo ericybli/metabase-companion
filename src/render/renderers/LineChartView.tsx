@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
 import { toChartData } from '@/render/normalize';
 import {
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
   domainMaxMulti,
+  getCategoryBands,
   getLinePointsWithMax,
   getPlotArea,
   paletteColor,
@@ -16,6 +17,7 @@ import {
   truncateLabel,
 } from '@/render/chartScale';
 import { ChartLegend } from './ChartLegend';
+import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import type { QueryResult } from '@/api/schemas';
 
 export interface LineChartViewProps {
@@ -33,6 +35,7 @@ export function LineChartView({ result, vizSettings }: LineChartViewProps): Reac
   const theme = useTheme();
   const { t } = useTranslation();
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
+  const { selectedIndex, toggleIndex } = useChartTooltip();
 
   const data = toChartData(result, vizSettings);
 
@@ -57,6 +60,10 @@ export function LineChartView({ result, vizSettings }: LineChartViewProps): Reac
   // Thin out the x-axis labels so they don't overlap; points stay one-per-value.
   const labelIndices = pickAxisLabelIndices(data.labels.length);
   const multi = data.series.length > 1;
+  // One full-height transparent touch band per point for tap-for-value.
+  const touchBands = getCategoryBands(data.labels.length, plot);
+  const anchorX =
+    selectedIndex !== null ? (seriesPoints[0]?.[selectedIndex]?.x ?? plot.innerLeft) : 0;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -66,48 +73,63 @@ export function LineChartView({ result, vizSettings }: LineChartViewProps): Reac
         </Text>
       ) : null}
       {multi ? <ChartLegend names={data.series.map((s) => s.name)} colorAt={paletteColor} /> : null}
-      <Svg width={width} height={CHART_HEIGHT}>
-        <Line
-          x1={plot.innerLeft}
-          y1={plot.innerBottom}
-          x2={plot.innerRight}
-          y2={plot.innerBottom}
-          stroke={theme.colors.border}
-          strokeWidth={1}
-        />
-        {seriesPoints.map((points, si) => {
-          const color = paletteColor(si);
-          return (
-            <React.Fragment key={`series-${si}`}>
-              {points.length > 1 ? (
-                <Polyline
-                  points={pointsToString(points)}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              ) : null}
-              {points.map((p, i) => (
-                <Circle key={`dot-${si}-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
-              ))}
-            </React.Fragment>
-          );
-        })}
-        {labelIndices.map((i) => (
-          <SvgText
-            key={`label-${i}`}
-            x={seriesPoints[0]?.[i]?.x ?? plot.innerLeft}
-            y={plot.innerBottom + 16}
-            fontSize={9}
-            fill={theme.colors.textMuted}
-            textAnchor="middle"
-          >
-            {truncateLabel(data.labels[i] ?? '')}
-          </SvgText>
-        ))}
-      </Svg>
+      <View>
+        <Svg width={width} height={CHART_HEIGHT}>
+          <Line
+            x1={plot.innerLeft}
+            y1={plot.innerBottom}
+            x2={plot.innerRight}
+            y2={plot.innerBottom}
+            stroke={theme.colors.border}
+            strokeWidth={1}
+          />
+          {seriesPoints.map((points, si) => {
+            const color = paletteColor(si);
+            return (
+              <React.Fragment key={`series-${si}`}>
+                {points.length > 1 ? (
+                  <Polyline
+                    points={pointsToString(points)}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null}
+                {points.map((p, i) => (
+                  <Circle key={`dot-${si}-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
+                ))}
+              </React.Fragment>
+            );
+          })}
+          {labelIndices.map((i) => (
+            <SvgText
+              key={`label-${i}`}
+              x={seriesPoints[0]?.[i]?.x ?? plot.innerLeft}
+              y={plot.innerBottom + 16}
+              fontSize={9}
+              fill={theme.colors.textMuted}
+              textAnchor="middle"
+            >
+              {truncateLabel(data.labels[i] ?? '')}
+            </SvgText>
+          ))}
+          {touchBands.map((band) => (
+            <Rect
+              key={`touch-${band.index}`}
+              testID={`chart-touch-${band.index}`}
+              x={band.x}
+              y={plot.innerTop}
+              width={band.width}
+              height={plot.innerBottom - plot.innerTop}
+              fill="transparent"
+              onPress={() => toggleIndex(band.index)}
+            />
+          ))}
+        </Svg>
+        <ChartTooltip data={data} selectedIndex={selectedIndex} anchorX={anchorX} width={width} />
+      </View>
     </View>
   );
 }

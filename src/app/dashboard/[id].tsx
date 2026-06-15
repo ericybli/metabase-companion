@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Modal,
   Pressable,
@@ -317,6 +318,26 @@ function DashcardModalContent({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data, isLoading, error } = useDashcardQuery(dashboardId, card, params);
+  // Landscape toggle: rotate the card content 90° so wide charts read sideways.
+  // Pure transform (no expo-screen-orientation, which needs a dev build).
+  const [landscape, setLandscape] = React.useState(false);
+
+  const body = data ? (
+    <ScrollView contentContainerStyle={{ padding: theme.spacing(4) }}>
+      <CardView
+        display={card.display ?? 'table'}
+        result={data}
+        vizSettings={card.vizSettings}
+        name={card.name}
+      />
+    </ScrollView>
+  ) : (
+    <View style={styles.center}>
+      <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
+        {t('chart.noData')}
+      </Text>
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
@@ -327,7 +348,23 @@ function DashcardModalContent({
         <Text numberOfLines={1} style={[styles.barTitle, { color: theme.colors.text }]}>
           {card.name}
         </Text>
-        <View style={{ width: 48 }} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: landscape }}
+          testID="fullscreen-rotate"
+          onPress={() => setLandscape((v) => !v)}
+          hitSlop={8}
+          style={{ width: 48, alignItems: 'flex-end' }}
+        >
+          <Text
+            style={{
+              color: landscape ? theme.colors.primary : theme.colors.textMuted,
+              fontSize: 16,
+            }}
+          >
+            {t('dashboard.rotate')}
+          </Text>
+        </Pressable>
       </View>
 
       {isLoading ? (
@@ -340,22 +377,40 @@ function DashcardModalContent({
             {t('errors.generic')} ({error instanceof ApiException ? error.error.kind : 'unknown'})
           </Text>
         </View>
-      ) : data ? (
-        <ScrollView contentContainerStyle={{ padding: theme.spacing(4) }}>
-          <CardView
-            display={card.display ?? 'table'}
-            result={data}
-            vizSettings={card.vizSettings}
-            name={card.name}
-          />
-        </ScrollView>
+      ) : landscape ? (
+        <RotatedContainer testID="fullscreen-rotated">{body}</RotatedContainer>
       ) : (
-        <View style={styles.center}>
-          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
-            {t('chart.noData')}
-          </Text>
-        </View>
+        body
       )}
+    </View>
+  );
+}
+
+/**
+ * Rotate its children 90° and size them to fill (width/height swapped against
+ * the screen Dimensions) so wide charts/tables read sideways in a portrait
+ * Modal. Pure CSS-style transform — works in Expo Go (no native orientation).
+ */
+function RotatedContainer({
+  children,
+  testID,
+}: {
+  children: React.ReactNode;
+  testID?: string;
+}): React.ReactElement {
+  const { width, height } = Dimensions.get('window');
+  return (
+    <View style={styles.rotateWrap}>
+      <View
+        testID={testID}
+        style={{
+          width: height,
+          height: width,
+          transform: [{ rotate: '90deg' }],
+        }}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -371,6 +426,7 @@ const styles = StyleSheet.create({
   },
   barTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', marginHorizontal: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  rotateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   card: { padding: 16, borderWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { marginTop: 12 },
