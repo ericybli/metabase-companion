@@ -1,4 +1,10 @@
-import { toRecords, formatValue, isNumericType, toChartSeries } from '@/render/normalize';
+import {
+  toRecords,
+  formatValue,
+  isNumericType,
+  toChartSeries,
+  toChartData,
+} from '@/render/normalize';
 import { type QueryColumn, type QueryResult } from '@/api/schemas';
 
 // ---- Helpers ----
@@ -403,6 +409,217 @@ describe('toChartSeries', () => {
       const result = makeResult([labelCol, countCol], [['A']]);
       const series = toChartSeries(result, {});
       expect(series?.values).toEqual([0]);
+    });
+  });
+});
+
+// ============================================================
+// toChartData
+// ============================================================
+
+describe('toChartData', () => {
+  const labelCol = makeCol({ name: 'label', displayName: 'Label', baseType: 'type/Text' });
+  const countCol = makeCol({ name: 'count', displayName: 'Count', baseType: 'type/Integer' });
+  const amountCol = makeCol({ name: 'amount', displayName: 'Amount', baseType: 'type/Float' });
+  const revenueCol = makeCol({ name: 'revenue', displayName: 'Revenue', baseType: 'type/Float' });
+  const dateCol = makeCol({ name: 'day', displayName: 'Day', baseType: 'type/Date' });
+
+  describe('single numeric column', () => {
+    it('returns 1 series when there is one numeric col', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['A', 10],
+          ['B', 20],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data).not.toBeNull();
+      expect(data?.series).toHaveLength(1);
+      expect(data?.series[0]?.name).toBe('Count');
+      expect(data?.series[0]?.values).toEqual([10, 20]);
+    });
+
+    it('produces labels from the non-numeric dimension col', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['Alpha', 5],
+          ['Beta', 15],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data?.labels).toEqual(['Alpha', 'Beta']);
+    });
+  });
+
+  describe('multiple numeric columns', () => {
+    it('returns N series when there are N numeric cols and no graph.metrics', () => {
+      const result = makeResult(
+        [labelCol, countCol, amountCol],
+        [
+          ['A', 1, 2.5],
+          ['B', 3, 4.5],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data).not.toBeNull();
+      expect(data?.series).toHaveLength(2);
+      expect(data?.series[0]?.name).toBe('Count');
+      expect(data?.series[1]?.name).toBe('Amount');
+      expect(data?.series[0]?.values).toEqual([1, 3]);
+      expect(data?.series[1]?.values).toEqual([2.5, 4.5]);
+    });
+
+    it('returns N series matching three numeric cols', () => {
+      const result = makeResult(
+        [labelCol, countCol, amountCol, revenueCol],
+        [['X', 10, 1.1, 99.9]],
+      );
+      const data = toChartData(result, {});
+      expect(data?.series).toHaveLength(3);
+      expect(data?.series.map((s) => s.name)).toEqual(['Count', 'Amount', 'Revenue']);
+    });
+  });
+
+  describe('graph.metrics / graph.dimensions honored', () => {
+    it('respects graph.metrics to select specific cols', () => {
+      const result = makeResult(
+        [labelCol, countCol, amountCol, revenueCol],
+        [
+          ['A', 1, 2.0, 3.0],
+          ['B', 4, 5.0, 6.0],
+        ],
+      );
+      const data = toChartData(result, {
+        'graph.metrics': ['amount', 'revenue'],
+      });
+      expect(data?.series).toHaveLength(2);
+      expect(data?.series[0]?.name).toBe('Amount');
+      expect(data?.series[1]?.name).toBe('Revenue');
+      expect(data?.series[0]?.values).toEqual([2.0, 5.0]);
+      expect(data?.series[1]?.values).toEqual([3.0, 6.0]);
+    });
+
+    it('respects graph.dimensions[0] for dimension column selection', () => {
+      const result = makeResult(
+        [labelCol, dateCol, countCol],
+        [
+          ['Foo', '2024-01-01', 10],
+          ['Bar', '2024-01-02', 20],
+        ],
+      );
+      const data = toChartData(result, {
+        'graph.dimensions': ['day'],
+        'graph.metrics': ['count'],
+      });
+      expect(data?.series).toHaveLength(1);
+      expect(data?.series[0]?.name).toBe('Count');
+      // labels come from the 'day' col
+      expect(data?.labels).toHaveLength(2);
+      // each label should be a formatted date string
+      expect(data?.labels[0]).not.toBe('—');
+    });
+
+    it('uses graph.metrics single-element to produce 1 series from non-first numeric col', () => {
+      const result = makeResult([labelCol, countCol, amountCol], [['X', 99, 3.14]]);
+      const data = toChartData(result, {
+        'graph.metrics': ['amount'],
+      });
+      expect(data?.series).toHaveLength(1);
+      expect(data?.series[0]?.name).toBe('Amount');
+      expect(data?.series[0]?.values).toEqual([3.14]);
+    });
+  });
+
+  describe('null when no numeric col', () => {
+    it('returns null when there are no numeric columns and no graph.metrics', () => {
+      const result = makeResult([labelCol], [['A'], ['B']]);
+      expect(toChartData(result, {})).toBeNull();
+    });
+
+    it('returns null when graph.metrics names do not match any column', () => {
+      const result = makeResult([labelCol, countCol], [['A', 10]]);
+      const data = toChartData(result, {
+        'graph.metrics': ['nonexistent'],
+      });
+      expect(data).toBeNull();
+    });
+
+    it('returns null for empty cols', () => {
+      const result = makeResult([], []);
+      expect(toChartData(result, {})).toBeNull();
+    });
+  });
+
+  describe('null/NaN cells coerced to 0', () => {
+    it('maps null metric values to 0', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['A', null],
+          ['B', 5],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data?.series[0]?.values).toEqual([0, 5]);
+    });
+
+    it('maps undefined metric values (short rows) to 0', () => {
+      const result = makeResult([labelCol, countCol], [['A']]);
+      const data = toChartData(result, {});
+      expect(data?.series[0]?.values).toEqual([0]);
+    });
+
+    it('maps NaN-producing string values to 0', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['A', 'notanumber'],
+          ['B', 7],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data?.series[0]?.values).toEqual([0, 7]);
+    });
+
+    it('maps empty string metric values to 0', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['A', ''],
+          ['B', 42],
+        ],
+      );
+      const data = toChartData(result, {});
+      expect(data?.series[0]?.values).toEqual([0, 42]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('returns empty labels and series values arrays for empty rows', () => {
+      const result = makeResult([labelCol, countCol], []);
+      const data = toChartData(result, {});
+      expect(data).not.toBeNull();
+      expect(data?.labels).toEqual([]);
+      expect(data?.series[0]?.values).toEqual([]);
+    });
+
+    it('falls back to first col as dimension when all cols are numeric', () => {
+      const result = makeResult(
+        [countCol, amountCol],
+        [
+          [1, 2.5],
+          [3, 4.5],
+        ],
+      );
+      const data = toChartData(result, {});
+      // dimension = countCol (first col), both cols numeric so both become series
+      // But dimension = first col, and metrics = all numeric cols
+      // labels come from countCol
+      expect(data?.labels).toEqual(['1', '3']);
+      // both numeric cols become series
+      expect(data?.series).toHaveLength(2);
     });
   });
 });

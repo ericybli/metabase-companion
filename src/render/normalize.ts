@@ -78,6 +78,100 @@ export function toRecords(result: QueryResult): Record<string, unknown>[] {
 }
 
 /**
+ * Multi-series chart data shape.
+ * labels = one entry per row (x-axis / dimension values).
+ * series = one entry per metric column.
+ */
+export interface ChartData {
+  labels: string[];
+  series: { name: string; values: number[] }[];
+}
+
+/**
+ * Extract multi-series chart data from a query result.
+ *
+ * Dimension (x / labels): prefer graph.dimensions[0] matched by col.name;
+ * else first non-numeric col; else first col.
+ *
+ * Series (y): if vizSettings['graph.metrics'] is a non-empty array, one series
+ * per metric col matched by name; else one series per numeric column.
+ * Each series value is coerced to number; null/NaN/undefined → 0.
+ *
+ * Returns null if there are no numeric/metric columns.
+ */
+export function toChartData(
+  result: QueryResult,
+  vizSettings: Record<string, unknown>,
+): ChartData | null {
+  const { rows, cols } = result;
+
+  // --- Resolve dimension column ---
+  let dimensionCol: QueryColumn | undefined;
+
+  const graphDimensions = vizSettings['graph.dimensions'];
+  if (Array.isArray(graphDimensions) && graphDimensions.length > 0) {
+    const dimName = graphDimensions[0];
+    if (typeof dimName === 'string') {
+      dimensionCol = cols.find((c) => c.name === dimName);
+    }
+  }
+
+  if (!dimensionCol) {
+    dimensionCol = cols.find((c) => !isNumericType(c.baseType));
+  }
+
+  if (!dimensionCol) {
+    dimensionCol = cols[0];
+  }
+
+  // --- Resolve metric columns ---
+  let metricCols: QueryColumn[];
+
+  const graphMetrics = vizSettings['graph.metrics'];
+  if (Array.isArray(graphMetrics) && graphMetrics.length > 0) {
+    const named = graphMetrics
+      .filter((m): m is string => typeof m === 'string')
+      .map((name) => cols.find((c) => c.name === name))
+      .filter((c): c is QueryColumn => c !== undefined);
+    metricCols = named;
+  } else {
+    metricCols = cols.filter((c) => isNumericType(c.baseType));
+  }
+
+  if (metricCols.length === 0) {
+    return null;
+  }
+
+  // --- Build labels ---
+  const resolvedDimensionCol: QueryColumn | undefined = dimensionCol;
+  const dimensionIndex = resolvedDimensionCol ? cols.indexOf(resolvedDimensionCol) : -1;
+
+  const labels = rows.map((row) => {
+    if (!resolvedDimensionCol || dimensionIndex < 0) {
+      return '—';
+    }
+    const cell = row[dimensionIndex];
+    return formatValue(cell, resolvedDimensionCol);
+  });
+
+  // --- Build series ---
+  const series = metricCols.map((metricCol) => {
+    const metricIndex = cols.indexOf(metricCol);
+    const values = rows.map((row) => {
+      const cell = row[metricIndex];
+      if (cell === null || cell === undefined || cell === '') {
+        return 0;
+      }
+      const num = Number(cell);
+      return isNaN(num) ? 0 : num;
+    });
+    return { name: metricCol.displayName, values };
+  });
+
+  return { labels, series };
+}
+
+/**
  * Extract chart series from a query result.
  *
  * Dimension (x / labels): prefer graph.dimensions[0] matched by col.name;
