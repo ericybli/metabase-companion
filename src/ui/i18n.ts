@@ -53,6 +53,10 @@ export const resources = {
         empty: 'This dashboard has no cards.',
         chartsComingSoon: 'Chart rendering is coming soon.',
       },
+      chart: {
+        noData: 'No data',
+        showingNofM: 'Showing {{shown}} of {{total}}',
+      },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
         unreachable: 'Couldn’t reach that instance. Check the URL and your connection.',
@@ -110,6 +114,10 @@ export const resources = {
         back: '返回',
         empty: '该仪表盘没有卡片。',
         chartsComingSoon: '图表渲染即将上线。',
+      },
+      chart: {
+        noData: '暂无数据',
+        showingNofM: '显示 {{shown}} / {{total}}',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',
