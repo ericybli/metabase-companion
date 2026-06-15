@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
-import { toChartSeries } from '@/render/normalize';
+import { toChartData } from '@/render/normalize';
 import { CHART_HEIGHT, getPieSlices, paletteColor } from '@/render/chartScale';
 import type { QueryResult } from '@/api/schemas';
 
@@ -15,16 +15,19 @@ export interface PieChartViewProps {
 const PIE_SIZE = CHART_HEIGHT - 20; // square SVG side for the pie
 
 /**
- * Pie chart: one <Path> arc per value using cumulative angles (slice fraction
- * = value / sum) drawn with a small categorical palette, plus a legend of
- * color swatch + label + value. Renders a themed "no data" message when there
- * is no numeric series or every value is non-positive.
+ * Pie chart: inherently single-series, so it uses the first series from
+ * {@link toChartData}. One <Path> arc per value using cumulative angles (slice
+ * fraction = value / sum) drawn with a small categorical palette, plus a legend
+ * of color swatch + label + value. Renders a themed "no data" message when
+ * there is no numeric series or every value is non-positive.
  */
 export function PieChartView({ result, vizSettings }: PieChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const series = toChartSeries(result, vizSettings);
+  const data = toChartData(result, vizSettings);
+  const series = data?.series[0];
+  const labels = data?.labels ?? [];
 
   const radius = PIE_SIZE / 2 - 4;
   const center = PIE_SIZE / 2;
@@ -41,7 +44,7 @@ export function PieChartView({ result, vizSettings }: PieChartViewProps): React.
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: theme.colors.textMuted }]} numberOfLines={1}>
-        {series.metricName}
+        {series.name}
       </Text>
       <View style={styles.pieRow}>
         <Svg width={PIE_SIZE} height={PIE_SIZE}>
@@ -58,7 +61,7 @@ export function PieChartView({ result, vizSettings }: PieChartViewProps): React.
           )}
         </Svg>
         <View style={styles.legend}>
-          {series.labels.map((label, i) => (
+          {labels.map((label, i) => (
             <View key={`legend-${i}`} style={styles.legendRow}>
               <View style={[styles.swatch, { backgroundColor: paletteColor(i) }]} />
               <Text style={[styles.legendLabel, { color: theme.colors.text }]} numberOfLines={1}>

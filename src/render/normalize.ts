@@ -1,11 +1,5 @@
 import { type QueryColumn, type QueryResult } from '@/api/schemas';
 
-export interface ChartSeries {
-  labels: string[];
-  values: number[];
-  metricName: string;
-}
-
 /**
  * Returns true for numeric Metabase base types.
  */
@@ -169,86 +163,4 @@ export function toChartData(
   });
 
   return { labels, series };
-}
-
-/**
- * Extract chart series from a query result.
- *
- * Dimension (x / labels): prefer graph.dimensions[0] matched by col.name;
- * else first non-numeric col; else first col.
- *
- * Metric (y / values): prefer graph.metrics[0] matched by col.name;
- * else first numeric col.
- *
- * Returns null if no numeric metric column exists.
- */
-export function toChartSeries(
-  result: QueryResult,
-  vizSettings: Record<string, unknown>,
-): ChartSeries | null {
-  const { rows, cols } = result;
-
-  // --- Resolve metric column ---
-  let metricCol: QueryColumn | undefined;
-
-  const graphMetrics = vizSettings['graph.metrics'];
-  if (Array.isArray(graphMetrics) && graphMetrics.length > 0) {
-    const metricName = graphMetrics[0];
-    if (typeof metricName === 'string') {
-      metricCol = cols.find((c) => c.name === metricName);
-    }
-  }
-
-  if (!metricCol) {
-    metricCol = cols.find((c) => isNumericType(c.baseType));
-  }
-
-  // If there is no numeric metric column, return null
-  if (!metricCol) {
-    return null;
-  }
-
-  // --- Resolve dimension column ---
-  let dimensionCol: QueryColumn | undefined;
-
-  const graphDimensions = vizSettings['graph.dimensions'];
-  if (Array.isArray(graphDimensions) && graphDimensions.length > 0) {
-    const dimName = graphDimensions[0];
-    if (typeof dimName === 'string') {
-      dimensionCol = cols.find((c) => c.name === dimName);
-    }
-  }
-
-  if (!dimensionCol) {
-    dimensionCol = cols.find((c) => !isNumericType(c.baseType));
-  }
-
-  if (!dimensionCol) {
-    // cols is guaranteed non-empty here: metricCol was found above, so cols.length >= 1
-    dimensionCol = cols[0]!;
-  }
-
-  const resolvedDimensionCol: QueryColumn = dimensionCol;
-  const metricIndex = cols.indexOf(metricCol);
-  const dimensionIndex = cols.indexOf(resolvedDimensionCol);
-
-  const labels = rows.map((row) => {
-    const cell = row[dimensionIndex];
-    return formatValue(cell, resolvedDimensionCol);
-  });
-
-  const values = rows.map((row) => {
-    const cell = row[metricIndex];
-    if (cell === null || cell === undefined || cell === '') {
-      return 0;
-    }
-    const num = Number(cell);
-    return isNaN(num) ? 0 : num;
-  });
-
-  return {
-    labels,
-    values,
-    metricName: metricCol.displayName,
-  };
 }

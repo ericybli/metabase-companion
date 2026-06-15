@@ -3,18 +3,20 @@ import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Line, Path, Polyline, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
-import { toChartSeries } from '@/render/normalize';
+import { toChartData } from '@/render/normalize';
 import {
   buildAreaPath,
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
-  getLinePoints,
+  domainMaxMulti,
+  getLinePointsWithMax,
   getPlotArea,
+  paletteColor,
   pickAxisLabelIndices,
   pointsToString,
-  resolveSeriesColor,
   truncateLabel,
 } from '@/render/chartScale';
+import { ChartLegend } from './ChartLegend';
 import type { QueryResult } from '@/api/schemas';
 
 export interface AreaChartViewProps {
@@ -23,18 +25,19 @@ export interface AreaChartViewProps {
 }
 
 /**
- * Area chart: a filled <Path> from the line down to the baseline (semi-
- * transparent fill) plus the line itself and dots. Renders a themed "no data"
- * message when there is no numeric series.
+ * Area chart: one semi-transparent filled <Path> (down to the baseline) per
+ * series, overlaid, plus the line and dots — each in its own palette color and
+ * sharing a global y-axis max. A legend is drawn when there is more than one
+ * series. Renders a themed "no data" message when there is no numeric series.
  */
 export function AreaChartView({ result, vizSettings }: AreaChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
 
-  const series = toChartSeries(result, vizSettings);
+  const data = toChartData(result, vizSettings);
 
-  if (!series || series.values.length === 0) {
+  if (!data || data.series.length === 0 || data.labels.length === 0) {
     return (
       <View style={styles.container}>
         <Text style={[styles.noData, { color: theme.colors.textMuted }]}>{t('chart.noData')}</Text>
@@ -50,16 +53,20 @@ export function AreaChartView({ result, vizSettings }: AreaChartViewProps): Reac
   };
 
   const plot = getPlotArea(width, CHART_HEIGHT);
-  const points = getLinePoints(series.values, plot);
-  const color = resolveSeriesColor(vizSettings, series.metricName, theme.colors.primary);
+  const max = domainMaxMulti(data.series.map((s) => s.values));
+  const seriesPoints = data.series.map((s) => getLinePointsWithMax(s.values, plot, max));
   // Thin out the x-axis labels so they don't overlap; points stay one-per-value.
-  const labelIndices = pickAxisLabelIndices(points.length);
+  const labelIndices = pickAxisLabelIndices(data.labels.length);
+  const multi = data.series.length > 1;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
-      <Text style={[styles.title, { color: theme.colors.textMuted }]} numberOfLines={1}>
-        {series.metricName}
-      </Text>
+      {!multi ? (
+        <Text style={[styles.title, { color: theme.colors.textMuted }]} numberOfLines={1}>
+          {data.series[0]?.name ?? ''}
+        </Text>
+      ) : null}
+      {multi ? <ChartLegend names={data.series.map((s) => s.name)} colorAt={paletteColor} /> : null}
       <Svg width={width} height={CHART_HEIGHT}>
         <Line
           x1={plot.innerLeft}
@@ -69,32 +76,44 @@ export function AreaChartView({ result, vizSettings }: AreaChartViewProps): Reac
           stroke={theme.colors.border}
           strokeWidth={1}
         />
-        {points.length > 1 ? (
-          <Path d={buildAreaPath(points, plot)} fill={color} fillOpacity={0.25} stroke="none" />
-        ) : null}
-        {points.length > 1 ? (
-          <Polyline
-            points={pointsToString(points)}
-            fill="none"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        ) : null}
-        {points.map((p, i) => (
-          <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
-        ))}
+        {seriesPoints.map((points, si) => {
+          const color = paletteColor(si);
+          return (
+            <React.Fragment key={`series-${si}`}>
+              {points.length > 1 ? (
+                <Path
+                  d={buildAreaPath(points, plot)}
+                  fill={color}
+                  fillOpacity={0.25}
+                  stroke="none"
+                />
+              ) : null}
+              {points.length > 1 ? (
+                <Polyline
+                  points={pointsToString(points)}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              ) : null}
+              {points.map((p, i) => (
+                <Circle key={`dot-${si}-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
+              ))}
+            </React.Fragment>
+          );
+        })}
         {labelIndices.map((i) => (
           <SvgText
             key={`label-${i}`}
-            x={points[i]?.x ?? plot.innerLeft}
+            x={seriesPoints[0]?.[i]?.x ?? plot.innerLeft}
             y={plot.innerBottom + 16}
             fontSize={9}
             fill={theme.colors.textMuted}
             textAnchor="middle"
           >
-            {truncateLabel(series.labels[i] ?? '')}
+            {truncateLabel(data.labels[i] ?? '')}
           </SvgText>
         ))}
       </Svg>

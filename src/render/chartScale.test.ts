@@ -1,8 +1,11 @@
 import {
   buildAreaPath,
   domainMax,
+  domainMaxMulti,
   getBarGeometry,
+  getGroupedBarGeometry,
   getLinePoints,
+  getLinePointsWithMax,
   getPieSlices,
   getPlotArea,
   paletteColor,
@@ -44,6 +47,23 @@ describe('domainMax', () => {
   });
 });
 
+describe('domainMaxMulti', () => {
+  it('returns the largest value across all series', () => {
+    expect(
+      domainMaxMulti([
+        [1, 5, 3],
+        [2, 9, 4],
+      ]),
+    ).toBe(9);
+  });
+
+  it('falls back to 1 when everything is non-positive or empty', () => {
+    expect(domainMaxMulti([[0, -1], [-2]])).toBe(1);
+    expect(domainMaxMulti([])).toBe(1);
+    expect(domainMaxMulti([[]])).toBe(1);
+  });
+});
+
 describe('valueToY', () => {
   it('maps 0 to the baseline and max to the top', () => {
     const plot = getPlotArea(320, 220);
@@ -69,6 +89,51 @@ describe('getBarGeometry', () => {
 
   it('returns an empty array for no values', () => {
     expect(getBarGeometry([], getPlotArea())).toEqual([]);
+  });
+});
+
+describe('getGroupedBarGeometry', () => {
+  it('produces one bar per series per label, ordered label-major', () => {
+    const plot = getPlotArea(320, 220);
+    const series = [
+      [10, 25, 18],
+      [5, 12, 9],
+    ];
+    const max = domainMaxMulti(series);
+    const bars = getGroupedBarGeometry(series, 3, plot, max);
+    // 2 series x 3 labels = 6 bars.
+    expect(bars).toHaveLength(6);
+    // First two bars share label 0, one per series.
+    expect(bars[0]!.labelIndex).toBe(0);
+    expect(bars[0]!.seriesIndex).toBe(0);
+    expect(bars[1]!.labelIndex).toBe(0);
+    expect(bars[1]!.seriesIndex).toBe(1);
+    // Bars in the same band are side-by-side (series 1 sits to the right of series 0).
+    expect(bars[1]!.x).toBeGreaterThan(bars[0]!.x);
+    // The global max value (25, series 0 label 1) is the tallest bar.
+    const tallest = bars.reduce((a, b) => (b.height > a.height ? b : a));
+    expect(tallest.seriesIndex).toBe(0);
+    expect(tallest.labelIndex).toBe(1);
+    bars.forEach((b) => {
+      expect(b.width).toBeGreaterThan(0);
+      expect(b.y + b.height).toBeCloseTo(plot.innerBottom);
+    });
+  });
+
+  it('returns an empty array for no series or no labels', () => {
+    const plot = getPlotArea();
+    expect(getGroupedBarGeometry([], 3, plot, 1)).toEqual([]);
+    expect(getGroupedBarGeometry([[1, 2]], 0, plot, 1)).toEqual([]);
+  });
+});
+
+describe('getLinePointsWithMax', () => {
+  it('scales to the supplied max so series share an axis', () => {
+    const plot = getPlotArea(320, 220);
+    // Same value, different max -> different y (smaller max -> higher / closer to top).
+    const yBigMax = getLinePointsWithMax([5], plot, 10)[0]!.y;
+    const ySmallMax = getLinePointsWithMax([5], plot, 5)[0]!.y;
+    expect(ySmallMax).toBeLessThan(yBigMax);
   });
 });
 

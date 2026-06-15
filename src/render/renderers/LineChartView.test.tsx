@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import { Text as SvgText } from 'react-native-svg';
+import { Polyline, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { LineChartView } from './LineChartView';
 import type { QueryResult } from '@/api/schemas';
@@ -33,6 +33,22 @@ const threePoint: QueryResult = {
   error: null,
 };
 
+const twoSeries: QueryResult = {
+  rows: [
+    ['Jan', 10, 5],
+    ['Feb', 25, 12],
+    ['Mar', 18, 9],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'revenue', displayName: 'Revenue', baseType: 'type/Float', semanticType: null },
+    { name: 'cost', displayName: 'Cost', baseType: 'type/Float', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
 describe('LineChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<LineChartView result={threePoint} vizSettings={{}} />);
@@ -40,6 +56,17 @@ describe('LineChartView', () => {
     expect(screen.getByText('Revenue')).toBeTruthy();
     // The polyline + dots render inside the SVG without throwing.
     expect(UNSAFE_root).toBeTruthy();
+  });
+
+  it('draws one polyline per series and a legend with both names', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <LineChartView result={twoSeries} vizSettings={{}} />,
+    );
+    // One <Polyline> per series (2 series, both with >1 point).
+    expect(UNSAFE_getAllByType(Polyline)).toHaveLength(2);
+    // Legend swatches + names render as plain RN <Text>, matchable by getByText.
+    expect(screen.getByText('Revenue')).toBeTruthy();
+    expect(screen.getByText('Cost')).toBeTruthy();
   });
 
   it('thins x-axis labels with many points, keeping the first and last', async () => {

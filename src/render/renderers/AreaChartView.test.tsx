@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import { Text as SvgText } from 'react-native-svg';
+import { Path, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { AreaChartView } from './AreaChartView';
 import type { QueryResult } from '@/api/schemas';
@@ -33,6 +33,22 @@ const threePoint: QueryResult = {
   error: null,
 };
 
+const twoSeries: QueryResult = {
+  rows: [
+    ['Jan', 10, 5],
+    ['Feb', 25, 12],
+    ['Mar', 18, 9],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'visits', displayName: 'Visits', baseType: 'type/Integer', semanticType: null },
+    { name: 'signups', displayName: 'Signups', baseType: 'type/Integer', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
 describe('AreaChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<AreaChartView result={threePoint} vizSettings={{}} />);
@@ -40,6 +56,19 @@ describe('AreaChartView', () => {
     expect(screen.getByText('Visits')).toBeTruthy();
     // The filled area path + line render inside the SVG without throwing.
     expect(UNSAFE_root).toBeTruthy();
+  });
+
+  it('draws one filled area per series and a legend with both names', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={twoSeries} vizSettings={{}} />,
+    );
+    // One semi-transparent filled <Path> per series (the line is a <Polyline>,
+    // which react-native-svg also renders via <Path>, so filter by fillOpacity).
+    const areas = UNSAFE_getAllByType(Path).filter((n) => n.props.fillOpacity === 0.25);
+    expect(areas).toHaveLength(2);
+    // Legend swatches + names render as plain RN <Text>, matchable by getByText.
+    expect(screen.getByText('Visits')).toBeTruthy();
+    expect(screen.getByText('Signups')).toBeTruthy();
   });
 
   it('thins x-axis labels with many points, keeping the first and last', async () => {

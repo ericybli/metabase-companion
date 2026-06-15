@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import { Text as SvgText } from 'react-native-svg';
+import { Rect, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { BarChartView } from './BarChartView';
 import type { QueryResult } from '@/api/schemas';
@@ -33,6 +33,22 @@ const threePoint: QueryResult = {
   error: null,
 };
 
+const twoSeries: QueryResult = {
+  rows: [
+    ['Jan', 10, 5],
+    ['Feb', 25, 12],
+    ['Mar', 18, 9],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+    { name: 'returns', displayName: 'Returns', baseType: 'type/Integer', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
 describe('BarChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<BarChartView result={threePoint} vizSettings={{}} />);
@@ -40,6 +56,17 @@ describe('BarChartView', () => {
     expect(screen.getByText('Total')).toBeTruthy();
     // Three bars are drawn inside the SVG without throwing.
     expect(UNSAFE_root).toBeTruthy();
+  });
+
+  it('draws grouped bars (one per series per label) and a legend with both names', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <BarChartView result={twoSeries} vizSettings={{}} />,
+    );
+    // 2 series x 3 labels = 6 <Rect> bars (the baseline is a <Line>, not a Rect).
+    expect(UNSAFE_getAllByType(Rect)).toHaveLength(6);
+    // Legend swatches + names render as plain RN <Text>, matchable by getByText.
+    expect(screen.getByText('Total')).toBeTruthy();
+    expect(screen.getByText('Returns')).toBeTruthy();
   });
 
   it('thins x-axis labels with many points, keeping the first and last', async () => {

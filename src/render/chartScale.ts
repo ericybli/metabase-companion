@@ -104,6 +104,22 @@ export function domainMax(values: number[]): number {
 }
 
 /**
+ * Domain max across multiple series, so every series in a multi-series chart
+ * shares the same y-axis scale. Falls back to 1 when everything is <= 0.
+ */
+export function domainMaxMulti(series: readonly number[][]): number {
+  let max = 0;
+  for (const values of series) {
+    for (const v of values) {
+      if (Number.isFinite(v) && v > max) {
+        max = v;
+      }
+    }
+  }
+  return max > 0 ? max : 1;
+}
+
+/**
  * Map a data value to a y pixel within the plot area. 0 maps to the baseline
  * (innerBottom) and `max` maps to innerTop.
  */
@@ -145,6 +161,57 @@ export function getBarGeometry(values: number[], plot: PlotArea): BarGeometry[] 
   });
 }
 
+export interface GroupedBar extends BarGeometry {
+  /** Index of the series this bar belongs to (for palette color lookup). */
+  seriesIndex: number;
+  /** Index of the label / band this bar belongs to. */
+  labelIndex: number;
+}
+
+/**
+ * Compute grouped bar rectangles: for each label band, draw one bar per series
+ * side-by-side. The band fills 80% of its slot, sub-divided evenly between the
+ * series. All series share `max` so heights are comparable across the chart.
+ *
+ * `series` is series-major (series[s][labelIndex]); the returned bars are
+ * ordered label-major then series-major, each tagged with its indices.
+ */
+export function getGroupedBarGeometry(
+  series: readonly number[][],
+  labelCount: number,
+  plot: PlotArea,
+  max: number,
+): GroupedBar[] {
+  const seriesCount = series.length;
+  if (seriesCount === 0 || labelCount === 0) {
+    return [];
+  }
+  const bandWidth = plot.innerWidth / labelCount;
+  const groupWidth = bandWidth * 0.8;
+  const barWidth = Math.max(1, groupWidth / seriesCount);
+  const bars: GroupedBar[] = [];
+  for (let labelIndex = 0; labelIndex < labelCount; labelIndex++) {
+    const bandStart = plot.innerLeft + labelIndex * bandWidth;
+    const groupStart = bandStart + (bandWidth - groupWidth) / 2;
+    for (let seriesIndex = 0; seriesIndex < seriesCount; seriesIndex++) {
+      const value = series[seriesIndex]?.[labelIndex] ?? 0;
+      const x = groupStart + seriesIndex * barWidth;
+      const y = valueToY(Math.max(0, value), max, plot);
+      const height = Math.max(0, plot.innerBottom - y);
+      bars.push({
+        x,
+        y,
+        width: barWidth,
+        height,
+        centerX: bandStart + bandWidth / 2,
+        seriesIndex,
+        labelIndex,
+      });
+    }
+  }
+  return bars;
+}
+
 export interface LinePoint {
   x: number;
   y: number;
@@ -152,14 +219,14 @@ export interface LinePoint {
 
 /**
  * Compute evenly spaced points for line/area charts. Single point is centered;
- * multiple points span the full inner width edge-to-edge.
+ * multiple points span the full inner width edge-to-edge. Scaled to an explicit
+ * `max` so multiple series can share a common y-axis (use {@link domainMaxMulti}).
  */
-export function getLinePoints(values: number[], plot: PlotArea): LinePoint[] {
+export function getLinePointsWithMax(values: number[], plot: PlotArea, max: number): LinePoint[] {
   const count = values.length;
   if (count === 0) {
     return [];
   }
-  const max = domainMax(values);
   if (count === 1) {
     const x = plot.innerLeft + plot.innerWidth / 2;
     // values[0] is defined because count === 1.
@@ -170,6 +237,15 @@ export function getLinePoints(values: number[], plot: PlotArea): LinePoint[] {
     x: plot.innerLeft + i * step,
     y: valueToY(value, max, plot),
   }));
+}
+
+/**
+ * Compute evenly spaced points for line/area charts. Single point is centered;
+ * multiple points span the full inner width edge-to-edge. Scales to this
+ * series' own max — see {@link getLinePointsWithMax} for shared scaling.
+ */
+export function getLinePoints(values: number[], plot: PlotArea): LinePoint[] {
+  return getLinePointsWithMax(values, plot, domainMax(values));
 }
 
 /** Format points as the `x,y x,y` string that <Polyline> expects. */
