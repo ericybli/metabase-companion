@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { BarChartView } from './BarChartView';
 import type { QueryResult } from '@/api/schemas';
@@ -49,6 +49,26 @@ const twoSeries: QueryResult = {
   error: null,
 };
 
+// One large-magnitude series so the y-axis labels abbreviate (e.g. "2k").
+const bigSeries: QueryResult = {
+  rows: [
+    ['Jan', 1000],
+    ['Feb', 2000],
+    ['Mar', 1500],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
+// Drawn (colored) bars, excluding the transparent tap-for-value bands.
+const barCount = (nodes: { props: { fill?: string } }[]): number =>
+  nodes.filter((n) => n.props.fill !== 'transparent').length;
+
 describe('BarChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<BarChartView result={threePoint} vizSettings={{}} />);
@@ -75,7 +95,8 @@ describe('BarChartView', () => {
     const { UNSAFE_getAllByType } = await render(
       <BarChartView result={twelvePoint} vizSettings={{}} />,
     );
-    const labels = UNSAFE_getAllByType(SvgText);
+    // X-axis labels are the centered SvgText; y-axis value labels are end-anchored.
+    const labels = UNSAFE_getAllByType(SvgText).filter((n) => n.props.textAnchor === 'middle');
     // 12 bars, but at most 6 labels so they don't overlap.
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.length).toBeLessThanOrEqual(6);
@@ -115,6 +136,43 @@ describe('BarChartView', () => {
     // Tapping the same column toggles it off.
     fireEvent.press(screen.getByTestId('chart-touch-0'));
     expect(screen.queryByTestId('chart-tooltip')).toBeNull();
+  });
+
+  it('renders a left y-axis with abbreviated value tick labels', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <BarChartView result={bigSeries} vizSettings={{}} />,
+    );
+    // Y-axis value labels are end-anchored SvgText (x-axis labels are centered).
+    const yLabels = UNSAFE_getAllByType(SvgText)
+      .filter((n) => n.props.textAnchor === 'end')
+      .map((n) => String(n.props.children));
+    expect(yLabels.length).toBeGreaterThanOrEqual(2);
+    expect(yLabels).toContain('0');
+    expect(yLabels).toContain('2k');
+  });
+
+  it('hides a series when its legend entry is tapped, keeping >=1 visible', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <BarChartView result={twoSeries} vizSettings={{}} />,
+    );
+    // 2 series x 3 labels = 6 drawn bars.
+    expect(barCount(UNSAFE_getAllByType(Rect))).toBe(6);
+
+    // Tap the first legend entry to hide that series -> 3 bars left.
+    fireEvent.press(screen.getByTestId('chart-legend-0'));
+    expect(barCount(UNSAFE_getAllByType(Rect))).toBe(3);
+
+    // Hiding the last visible series is refused: 3 bars stay drawn.
+    fireEvent.press(screen.getByTestId('chart-legend-1'));
+    expect(barCount(UNSAFE_getAllByType(Rect))).toBe(3);
+  });
+
+  it('renders at a custom height when the height prop is set', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <BarChartView result={twoSeries} vizSettings={{}} height={400} />,
+    );
+    const svg = UNSAFE_getAllByType(Svg)[0];
+    expect(svg?.props.height).toBe(400);
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

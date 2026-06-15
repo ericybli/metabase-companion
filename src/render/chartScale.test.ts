@@ -1,7 +1,9 @@
 import {
+  abbreviateNumber,
   buildAreaPath,
   domainMax,
   domainMaxMulti,
+  domainMinMulti,
   getBarGeometry,
   getCategoryBands,
   getGroupedBarGeometry,
@@ -15,7 +17,10 @@ import {
   resolveSeriesColor,
   truncateLabel,
   valueToY,
+  valueToYRange,
+  yAxisTicks,
   CHART_HEIGHT,
+  CHART_PADDING,
   DEFAULT_CHART_WIDTH,
   MAX_AXIS_LABELS,
 } from './chartScale';
@@ -65,11 +70,50 @@ describe('domainMaxMulti', () => {
   });
 });
 
+describe('domainMinMulti', () => {
+  it('anchors at 0 when every value is non-negative', () => {
+    expect(
+      domainMinMulti([
+        [1, 5, 3],
+        [2, 9, 4],
+      ]),
+    ).toBe(0);
+  });
+
+  it('extends below zero to the smallest negative value', () => {
+    expect(
+      domainMinMulti([
+        [1, -3],
+        [-7, 2],
+      ]),
+    ).toBe(-7);
+  });
+});
+
 describe('valueToY', () => {
   it('maps 0 to the baseline and max to the top', () => {
     const plot = getPlotArea(320, 220);
     expect(valueToY(0, 10, plot)).toBeCloseTo(plot.innerBottom);
     expect(valueToY(10, 10, plot)).toBeCloseTo(plot.innerTop);
+  });
+});
+
+describe('valueToYRange', () => {
+  it('maps min to the baseline and max to the top', () => {
+    const plot = getPlotArea(320, 220);
+    expect(valueToYRange(0, 0, 10, plot)).toBeCloseTo(plot.innerBottom);
+    expect(valueToYRange(10, 0, 10, plot)).toBeCloseTo(plot.innerTop);
+  });
+
+  it('matches valueToY when the domain starts at 0', () => {
+    const plot = getPlotArea(320, 220);
+    expect(valueToYRange(5, 0, 10, plot)).toBeCloseTo(valueToY(5, 10, plot));
+  });
+
+  it('handles negative-to-positive domains', () => {
+    const plot = getPlotArea(320, 220);
+    // 0 sits midway up a symmetric [-10, 10] domain.
+    expect(valueToYRange(0, -10, 10, plot)).toBeCloseTo((plot.innerTop + plot.innerBottom) / 2);
   });
 });
 
@@ -293,5 +337,82 @@ describe('resolveSeriesColor', () => {
 
   it('falls back when no color is present', () => {
     expect(resolveSeriesColor({}, 'revenue', '#123456')).toBe('#123456');
+  });
+});
+
+describe('CHART_PADDING', () => {
+  it('reserves room on the left for the y-axis labels', () => {
+    // ~44px so the abbreviated value labels (e.g. "2.5M") never clip.
+    expect(CHART_PADDING.left).toBeGreaterThanOrEqual(40);
+  });
+});
+
+describe('abbreviateNumber', () => {
+  it('abbreviates thousands with a "k" suffix', () => {
+    expect(abbreviateNumber(1234)).toBe('1.2k');
+    expect(abbreviateNumber(1000)).toBe('1k');
+    expect(abbreviateNumber(12000)).toBe('12k');
+  });
+
+  it('abbreviates millions and billions', () => {
+    expect(abbreviateNumber(2_500_000)).toBe('2.5M');
+    expect(abbreviateNumber(1_000_000)).toBe('1M');
+    expect(abbreviateNumber(3_200_000_000)).toBe('3.2B');
+  });
+
+  it('shows small integers as-is', () => {
+    expect(abbreviateNumber(0)).toBe('0');
+    expect(abbreviateNumber(42)).toBe('42');
+    expect(abbreviateNumber(999)).toBe('999');
+  });
+
+  it('shows small decimals sensibly', () => {
+    expect(abbreviateNumber(0.5)).toBe('0.5');
+    expect(abbreviateNumber(3.14159)).toBe('3.1');
+    expect(abbreviateNumber(12.7)).toBe('12.7');
+  });
+
+  it('handles negative numbers symmetrically', () => {
+    expect(abbreviateNumber(-1234)).toBe('-1.2k');
+    expect(abbreviateNumber(-5)).toBe('-5');
+  });
+
+  it('handles non-finite input gracefully', () => {
+    expect(abbreviateNumber(NaN)).toBe('—');
+    expect(abbreviateNumber(Infinity)).toBe('—');
+  });
+});
+
+describe('yAxisTicks', () => {
+  it('returns evenly spaced ticks from min to max, inclusive', () => {
+    const ticks = yAxisTicks(0, 100, 5);
+    expect(ticks[0]).toBe(0);
+    expect(ticks[ticks.length - 1]).toBe(100);
+    expect(ticks).toContain(50);
+  });
+
+  it('defaults to a sensible tick count', () => {
+    const ticks = yAxisTicks(0, 10);
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    expect(ticks[0]).toBe(0);
+    expect(ticks[ticks.length - 1]).toBe(10);
+  });
+
+  it('spans negative-to-positive domains', () => {
+    const ticks = yAxisTicks(-50, 50, 5);
+    expect(ticks[0]).toBe(-50);
+    expect(ticks[ticks.length - 1]).toBe(50);
+    expect(ticks).toContain(0);
+  });
+
+  it('returns a single tick for a degenerate (min === max) domain', () => {
+    expect(yAxisTicks(5, 5)).toEqual([5]);
+  });
+
+  it('is ascending and unique', () => {
+    const ticks = yAxisTicks(0, 1000, 5);
+    const sorted = [...ticks].sort((a, b) => a - b);
+    expect(ticks).toEqual(sorted);
+    expect(new Set(ticks).size).toBe(ticks.length);
   });
 });

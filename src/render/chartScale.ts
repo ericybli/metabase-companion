@@ -17,7 +17,7 @@ export const CHART_PADDING = {
   top: 16,
   right: 12,
   bottom: 28, // room for x-axis labels
-  left: 12,
+  left: 44, // room for the left y-axis value labels
 } as const;
 
 /**
@@ -120,6 +120,23 @@ export function domainMaxMulti(series: readonly number[][]): number {
 }
 
 /**
+ * Domain min across multiple series. We anchor the y-axis baseline at 0 by
+ * default (Metabase's default for bar/line/area); only when some value dips
+ * below 0 do we extend the axis down to the smallest negative value.
+ */
+export function domainMinMulti(series: readonly number[][]): number {
+  let min = 0;
+  for (const values of series) {
+    for (const v of values) {
+      if (Number.isFinite(v) && v < min) {
+        min = v;
+      }
+    }
+  }
+  return min;
+}
+
+/**
  * Map a data value to a y pixel within the plot area. 0 maps to the baseline
  * (innerBottom) and `max` maps to innerTop.
  */
@@ -127,6 +144,20 @@ export function valueToY(value: number, max: number, plot: PlotArea): number {
   const safeMax = max > 0 ? max : 1;
   const clamped = Number.isFinite(value) ? value : 0;
   const ratio = clamped / safeMax;
+  return plot.innerBottom - ratio * plot.innerHeight;
+}
+
+/**
+ * Map a data value to a y pixel within a plot area spanning an explicit
+ * [min, max] domain. `min` maps to the baseline (innerBottom), `max` maps to
+ * innerTop. Used by the y-axis-aware renderers so gridline labels and plotted
+ * points share the same scale (including negative domains).
+ */
+export function valueToYRange(value: number, min: number, max: number, plot: PlotArea): number {
+  const span = max - min;
+  const safeSpan = span !== 0 ? span : 1;
+  const clamped = Number.isFinite(value) ? value : min;
+  const ratio = (clamped - min) / safeSpan;
   return plot.innerBottom - ratio * plot.innerHeight;
 }
 
@@ -377,6 +408,78 @@ export function getCategoryBands(count: number, plot: PlotArea): CategoryBand[] 
     const x = plot.innerLeft + index * bandWidth;
     return { index, x, width: bandWidth, centerX: x + bandWidth / 2 };
   });
+}
+
+/**
+ * Abbreviate a number for compact axis / tooltip display:
+ *  - 1234 -> '1.2k', 1000 -> '1k', 2_500_000 -> '2.5M', 3.2e9 -> '3.2B'
+ *  - small integers shown as-is ('42'), small decimals to one place ('3.1')
+ *  - negatives mirror the positive form ('-1.2k')
+ *  - non-finite input -> '—'
+ *
+ * Trailing '.0' is always trimmed so '1.0k' reads as '1k'.
+ */
+export function abbreviateNumber(n: number): string {
+  if (!Number.isFinite(n)) {
+    return '—';
+  }
+  if (n === 0) {
+    return '0';
+  }
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+
+  const units: readonly { value: number; suffix: string }[] = [
+    { value: 1e9, suffix: 'B' },
+    { value: 1e6, suffix: 'M' },
+    { value: 1e3, suffix: 'k' },
+  ];
+  for (const { value, suffix } of units) {
+    if (abs >= value) {
+      const scaled = abs / value;
+      // One decimal of precision, dropping a trailing '.0'.
+      const text = scaled >= 100 ? String(Math.round(scaled)) : trimZero(scaled.toFixed(1));
+      return `${sign}${text}${suffix}`;
+    }
+  }
+  // Below 1000: integers as-is, otherwise one decimal place.
+  if (Number.isInteger(abs)) {
+    return `${sign}${abs}`;
+  }
+  return `${sign}${trimZero(abs.toFixed(1))}`;
+}
+
+/** Drop a trailing '.0' (e.g. '1.0' -> '1') from a fixed-decimal string. */
+function trimZero(text: string): string {
+  return text.endsWith('.0') ? text.slice(0, -2) : text;
+}
+
+/** Default number of y-axis ticks (gridlines) drawn by the cartesian charts. */
+export const DEFAULT_Y_TICK_COUNT = 5;
+
+/**
+ * Produce `count` evenly spaced y-axis tick values spanning [min, max]
+ * inclusive (so both endpoints are always present). A degenerate domain
+ * (min === max) yields a single tick. The result is ascending and unique.
+ */
+export function yAxisTicks(
+  min: number,
+  max: number,
+  count: number = DEFAULT_Y_TICK_COUNT,
+): number[] {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    return [Number.isFinite(min) ? min : 0];
+  }
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  const steps = Math.max(1, Math.floor(count) - 1);
+  const span = hi - lo;
+  const ticks: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    ticks.push(lo + (span * i) / steps);
+  }
+  // De-dupe (rounding can collide on tiny spans) and keep ascending order.
+  return Array.from(new Set(ticks)).sort((a, b) => a - b);
 }
 
 /** Truncate an axis label to `max` chars, appending an ellipsis when clipped. */

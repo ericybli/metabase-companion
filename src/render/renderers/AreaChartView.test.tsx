@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { AreaChartView } from './AreaChartView';
 import type { QueryResult } from '@/api/schemas';
@@ -49,6 +49,25 @@ const twoSeries: QueryResult = {
   error: null,
 };
 
+// One large-magnitude series so the y-axis labels abbreviate (e.g. "2k").
+const bigSeries: QueryResult = {
+  rows: [
+    ['Jan', 1000],
+    ['Feb', 2000],
+    ['Mar', 1500],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'visits', displayName: 'Visits', baseType: 'type/Integer', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
+const areaCount = (nodes: { props: { fillOpacity?: number } }[]): number =>
+  nodes.filter((n) => n.props.fillOpacity === 0.25).length;
+
 describe('AreaChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<AreaChartView result={threePoint} vizSettings={{}} />);
@@ -75,7 +94,8 @@ describe('AreaChartView', () => {
     const { UNSAFE_getAllByType } = await render(
       <AreaChartView result={twelvePoint} vizSettings={{}} />,
     );
-    const labels = UNSAFE_getAllByType(SvgText);
+    // X-axis labels are the centered SvgText; y-axis value labels are end-anchored.
+    const labels = UNSAFE_getAllByType(SvgText).filter((n) => n.props.textAnchor === 'middle');
     // 12 points, but at most 6 labels so they don't overlap.
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.length).toBeLessThanOrEqual(6);
@@ -100,6 +120,42 @@ describe('AreaChartView', () => {
     // Tapping the same point again dismisses the tooltip.
     fireEvent.press(screen.getByTestId('chart-touch-1'));
     expect(screen.queryByTestId('chart-tooltip')).toBeNull();
+  });
+
+  it('renders a left y-axis with abbreviated value tick labels', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={bigSeries} vizSettings={{}} />,
+    );
+    const yLabels = UNSAFE_getAllByType(SvgText)
+      .filter((n) => n.props.textAnchor === 'end')
+      .map((n) => String(n.props.children));
+    expect(yLabels.length).toBeGreaterThanOrEqual(2);
+    expect(yLabels).toContain('0');
+    expect(yLabels).toContain('2k');
+  });
+
+  it('hides a series when its legend entry is tapped, keeping >=1 visible', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={twoSeries} vizSettings={{}} />,
+    );
+    // Two series -> two filled areas.
+    expect(areaCount(UNSAFE_getAllByType(Path))).toBe(2);
+
+    // Tap the first legend entry to hide that series.
+    fireEvent.press(screen.getByTestId('chart-legend-0'));
+    expect(areaCount(UNSAFE_getAllByType(Path))).toBe(1);
+
+    // Hiding the last visible series is refused: one area stays drawn.
+    fireEvent.press(screen.getByTestId('chart-legend-1'));
+    expect(areaCount(UNSAFE_getAllByType(Path))).toBe(1);
+  });
+
+  it('renders at a custom height when the height prop is set', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={twoSeries} vizSettings={{}} height={400} />,
+    );
+    const svg = UNSAFE_getAllByType(Svg)[0];
+    expect(svg?.props.height).toBe(400);
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

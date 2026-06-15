@@ -15,6 +15,12 @@ export interface CardViewProps {
   result: QueryResult;
   vizSettings: Record<string, unknown>;
   name: string;
+  /**
+   * Optional chart height in px, forwarded to the chart renderers (bar/line/
+   * area/pie). Omitted -> each renderer's default (~220px). Lets a fullscreen
+   * consumer make charts taller without changing the inline default.
+   */
+  height?: number;
 }
 
 /**
@@ -33,6 +39,7 @@ export function CardView({
   result,
   vizSettings,
   name,
+  height,
 }: CardViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -56,13 +63,13 @@ export function CardView({
       return <TableView result={result} />;
     case 'bar':
     case 'row':
-      return <BarChartView result={result} vizSettings={vizSettings} />;
+      return <BarChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'line':
-      return <LineChartView result={result} vizSettings={vizSettings} />;
+      return <LineChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'area':
-      return <AreaChartView result={result} vizSettings={vizSettings} />;
+      return <AreaChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'pie':
-      return <PieChartView result={result} vizSettings={vizSettings} />;
+      return <PieChartView result={result} vizSettings={vizSettings} height={height} />;
     default:
       return <UnsupportedTable display={display} result={result} />;
   }

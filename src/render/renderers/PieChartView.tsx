@@ -10,9 +10,9 @@ import type { QueryResult } from '@/api/schemas';
 export interface PieChartViewProps {
   result: QueryResult;
   vizSettings: Record<string, unknown>;
+  /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
+  height?: number;
 }
-
-const PIE_SIZE = CHART_HEIGHT - 20; // square SVG side for the pie
 
 /**
  * Pie chart: inherently single-series, so it uses the first series from
@@ -21,7 +21,11 @@ const PIE_SIZE = CHART_HEIGHT - 20; // square SVG side for the pie
  * of color swatch + label + value. Renders a themed "no data" message when
  * there is no numeric series or every value is non-positive.
  */
-export function PieChartView({ result, vizSettings }: PieChartViewProps): React.ReactElement {
+export function PieChartView({
+  result,
+  vizSettings,
+  height = CHART_HEIGHT,
+}: PieChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -29,8 +33,9 @@ export function PieChartView({ result, vizSettings }: PieChartViewProps): React.
   const series = data?.series[0];
   const labels = data?.labels ?? [];
 
-  const radius = PIE_SIZE / 2 - 4;
-  const center = PIE_SIZE / 2;
+  const pieSize = height - 20; // square SVG side for the pie
+  const radius = pieSize / 2 - 4;
+  const center = pieSize / 2;
   const slices = series ? getPieSlices(series.values, center, center, radius) : [];
 
   if (!series || slices.length === 0) {
@@ -47,7 +52,7 @@ export function PieChartView({ result, vizSettings }: PieChartViewProps): React.
         {series.name}
       </Text>
       <View style={styles.pieRow}>
-        <Svg width={PIE_SIZE} height={PIE_SIZE}>
+        <Svg width={pieSize} height={pieSize}>
           {slices.map((slice, i) =>
             slice.path ? (
               <Path

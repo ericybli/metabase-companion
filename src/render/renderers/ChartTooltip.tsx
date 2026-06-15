@@ -43,6 +43,11 @@ export interface ChartTooltipProps {
   anchorX: number;
   /** Full chart width, used to keep the tooltip on-screen. */
   width: number;
+  /**
+   * Visibility flags indexed by series; hidden series are omitted from the
+   * tooltip. Defaults to all-visible when omitted.
+   */
+  hidden?: boolean[];
 }
 
 const TOOLTIP_WIDTH = 140;
@@ -58,6 +63,7 @@ export function ChartTooltip({
   selectedIndex,
   anchorX,
   width,
+  hidden,
 }: ChartTooltipProps): React.ReactElement | null {
   const theme = useTheme();
   if (selectedIndex === null) {
@@ -90,15 +96,17 @@ export function ChartTooltip({
       <Text style={[styles.label, { color: theme.colors.text }]} numberOfLines={1}>
         {label}
       </Text>
-      {data.series.map((s, si) => (
-        <Text
-          key={`tt-${si}`}
-          style={[styles.row, { color: theme.colors.textMuted }]}
-          numberOfLines={1}
-        >
-          {s.name}: {formatTooltipValue(s.values[selectedIndex] ?? 0)}
-        </Text>
-      ))}
+      {data.series.map((s, si) =>
+        hidden?.[si] ? null : (
+          <Text
+            key={`tt-${si}`}
+            style={[styles.row, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            {s.name}: {formatTooltipValue(s.values[selectedIndex] ?? 0)}
+          </Text>
+        ),
+      )}
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import Svg from 'react-native-svg';
 import '@/ui/i18n';
 import { CardView } from './CardView';
 import type { QueryResult } from '@/api/schemas';
@@ -85,6 +86,23 @@ describe('CardView registry', () => {
     await render(<CardView display="pie" result={seriesResult} vizSettings={{}} name="Sales" />);
     expect(screen.getByText('Jan')).toBeTruthy();
     expect(screen.getByText('Feb')).toBeTruthy();
+  });
+
+  it('forwards a custom height to the chart renderer', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <CardView display="line" result={seriesResult} vizSettings={{}} name="Sales" height={500} />,
+    );
+    const svg = UNSAFE_getAllByType(Svg)[0];
+    expect(svg?.props.height).toBe(500);
+  });
+
+  it('uses the default chart height when height is omitted', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <CardView display="line" result={seriesResult} vizSettings={{}} name="Sales" />,
+    );
+    const svg = UNSAFE_getAllByType(Svg)[0];
+    // Default cartesian chart height (~220px) is preserved when height is omitted.
+    expect(svg?.props.height).toBe(220);
   });
 
   it('falls back to TableView with a note for an unknown display', async () => {
