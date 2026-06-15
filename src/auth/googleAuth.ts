@@ -1,9 +1,3 @@
-import {
-  GoogleSignin,
-  isSuccessResponse,
-  isErrorWithCode,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
 import { MetabaseClient } from '../api/client';
 import { SessionTokenSchema } from '../api/schemas';
 
@@ -30,6 +24,13 @@ export async function loginWithGoogle(
   baseUrl: string,
   googleAuthClientId: string,
 ): Promise<string> {
+  // Lazy-load the native Google module so the rest of the app (notably password
+  // login) runs in Expo Go, where this native module is unavailable. A runtime
+  // require keeps the native dependency out of the startup module graph until the
+  // user actually taps "Sign in with Google".
+  const { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } =
+    require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+
   GoogleSignin.configure({ webClientId: googleAuthClientId });
 
   let idToken: string | null;

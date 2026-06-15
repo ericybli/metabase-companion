@@ -12,6 +12,12 @@ module.exports = [
     rules: { 'import/no-named-as-default-member': 'off' },
   },
   {
+    // googleAuth lazy-loads the native module via require() so password login runs
+    // in Expo Go; the native dep must stay out of the startup module graph.
+    files: ['src/auth/googleAuth.ts'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     ignores: ['dist/*', '.expo/*', 'node_modules/*', 'coverage/*', 'scripts/*'],
   },
 ];
