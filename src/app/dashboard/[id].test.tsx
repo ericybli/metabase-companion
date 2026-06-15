@@ -44,6 +44,7 @@ describe('DashboardScreen', () => {
         { dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} },
         { dashcardId: 2, cardId: 6, name: 'Orders', display: 'table', vizSettings: {} },
       ],
+      parameters: [],
     });
     mockRunDashcardQuery.mockImplementation(
       (_client: unknown, _dashId: number, dashcardId: number) => {
@@ -82,8 +83,8 @@ describe('DashboardScreen', () => {
     // The scalar card's value and a table cell from the second card render.
     await waitFor(() => expect(screen.getByText('42')).toBeTruthy());
     expect(screen.getByText('Acme')).toBeTruthy();
-    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5);
-    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 2, 6);
+    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []);
+    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 2, 6, []);
   });
 
   it('shows the empty state when the dashboard has no cards', async () => {
@@ -92,6 +93,7 @@ describe('DashboardScreen', () => {
       name: 'Empty',
       description: null,
       cards: [],
+      parameters: [],
     });
 
     await render(<DashboardScreen />, { wrapper });
@@ -101,12 +103,41 @@ describe('DashboardScreen', () => {
     expect(mockRunDashcardQuery).not.toHaveBeenCalled();
   });
 
+  it('forwards dashboard parameter defaults to runDashcardQuery', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [
+        { id: 'p1', slug: 'date_filter', default: 'this-month' },
+        { id: 'p2', slug: 'status', default: null }, // null default should be excluded
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[99]],
+      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      rowCount: 1,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p1', value: 'this-month' },
+      ]),
+    );
+  });
+
   it('renders the per-card error state with the ApiException kind when the query fails', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,
       name: 'Sales',
       description: null,
       cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [],
     });
     mockRunDashcardQuery.mockRejectedValue(
       new ApiException({ kind: 'server', status: 500, message: 'boom' }),

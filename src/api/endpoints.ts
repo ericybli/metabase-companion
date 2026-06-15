@@ -44,16 +44,18 @@ export function getDashboard(client: MetabaseClient, id: number): Promise<Dashbo
 /**
  * POST /api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query
  * Runs a dashboard card query with dashboard context (applies dashboard filters).
+ * Pass `parameters` to forward active dashboard filter values (default values, etc.).
  */
 export function runDashcardQuery(
   client: MetabaseClient,
   dashboardId: number,
   dashcardId: number,
   cardId: number,
+  parameters: { id: string; value: unknown }[] = [],
 ): Promise<QueryResult> {
   return client.post(
     `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
-    { parameters: [] },
+    { parameters },
     QueryResultSchema,
   );
 }

@@ -108,10 +108,11 @@ describe('endpoints', () => {
       name: 'Sales',
       description: null,
       cards: [{ dashcardId: 100, cardId: 50, name: 'Revenue', display: 'line', vizSettings: {} }],
+      parameters: [],
     });
   });
 
-  it('runDashcardQuery calls POST with exact path, body { parameters: [] }, and parses QueryResult', async () => {
+  it('runDashcardQuery calls POST with exact path, body { parameters: [] } by default, and parses QueryResult', async () => {
     const raw = {
       data: {
         rows: [[10], [20]],
@@ -141,6 +142,32 @@ describe('endpoints', () => {
       status: 'completed',
       error: null,
     });
+  });
+
+  it('runDashcardQuery forwards the passed parameters array in the POST body', async () => {
+    const raw = {
+      data: {
+        rows: [[5]],
+        cols: [
+          { name: 'count', display_name: 'Count', base_type: 'type/Integer', semantic_type: null },
+        ],
+      },
+      row_count: 1,
+    };
+    const post = jest.fn(
+      async (_path: string, _body: unknown, schema: { parse: (v: unknown) => unknown }) =>
+        schema.parse(raw),
+    );
+    const client = { post } as unknown as MetabaseClient;
+
+    const params = [{ id: 'abc', value: 'this-month' }];
+    await runDashcardQuery(client, 5, 101, 42, params);
+
+    expect(post).toHaveBeenCalledWith(
+      '/api/dashboard/5/dashcard/101/card/42/query',
+      { parameters: [{ id: 'abc', value: 'this-month' }] },
+      expect.anything(),
+    );
   });
 
   it('runCardQuery calls POST with exact path, empty body, and parses QueryResult', async () => {

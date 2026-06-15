@@ -192,6 +192,7 @@ describe('DashboardDetailSchema', () => {
       name: 'S',
       description: null,
       cards: [{ dashcardId: 1, cardId: 5, name: 'R', display: 'bar', vizSettings: {} }],
+      parameters: [],
     });
   });
   it('falls back to ordered_cards on older versions', () => {
@@ -217,6 +218,72 @@ describe('DashboardDetailSchema', () => {
       ],
     });
     expect(result.cards[0]?.vizSettings).toEqual(vizSettings);
+  });
+
+  it('parses parameters array with id, slug, and default', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'Filtered',
+      dashcards: [],
+      parameters: [
+        { id: 'abc', slug: 'date_filter', default: 'this-month' },
+        { id: 'def', slug: 'status', default: 'active' },
+      ],
+    });
+    expect(result.parameters).toEqual([
+      { id: 'abc', slug: 'date_filter', default: 'this-month' },
+      { id: 'def', slug: 'status', default: 'active' },
+    ]);
+  });
+
+  it('defaults parameters to [] when absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'No Params',
+      dashcards: [],
+    });
+    expect(result.parameters).toEqual([]);
+  });
+
+  it('defaults parameter id to empty string when absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ slug: 'foo', default: 42 }],
+    });
+    expect(result.parameters[0]?.id).toBe('');
+  });
+
+  it('defaults parameter slug to empty string when absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'xyz', default: 'val' }],
+    });
+    expect(result.parameters[0]?.slug).toBe('');
+  });
+
+  it('sets parameter default to null when default is absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'xyz', slug: 'foo' }],
+    });
+    expect(result.parameters[0]?.default).toBeNull();
+  });
+
+  it('passes through extra keys on parameter objects', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'xyz', slug: 'foo', default: 'bar', type: 'date/relative', name: 'Date' }],
+    });
+    expect(result.parameters[0]?.default).toBe('bar');
+    expect(result.parameters[0]?.id).toBe('xyz');
   });
 });
 

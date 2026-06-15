@@ -8,7 +8,7 @@ import { useTheme } from '@/ui/ThemeProvider';
 import { ApiException } from '@/api/errors';
 import { createInstanceClient } from '@/api/instanceClient';
 import { getDashboard, runDashcardQuery } from '@/api/endpoints';
-import type { DashboardCard } from '@/api/schemas';
+import type { DashboardCard, DashboardParameter } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
 
@@ -64,9 +64,12 @@ export default function DashboardScreen() {
               {t('dashboard.empty')}
             </Text>
           }
-          renderItem={({ item }: { item: DashboardCard }) => (
-            <DashcardItem dashboardId={dashboardId} card={item} />
-          )}
+          renderItem={({ item }: { item: DashboardCard }) => {
+            const params = (data?.parameters ?? [])
+              .filter((p: DashboardParameter) => p.default != null)
+              .map((p: DashboardParameter) => ({ id: p.id, value: p.default }));
+            return <DashcardItem dashboardId={dashboardId} card={item} params={params} />;
+          }}
         />
       )}
     </View>
@@ -84,20 +87,22 @@ export default function DashboardScreen() {
 function DashcardItem({
   dashboardId,
   card,
+  params,
 }: {
   dashboardId: number;
   card: DashboardCard;
+  params: { id: string; value: unknown }[];
 }): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
   const instanceId = useInstancesStore((s: InstancesState) => s.activeInstanceId);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [instanceId, 'dashcard', dashboardId, card.dashcardId],
+    queryKey: [instanceId, 'dashcard', dashboardId, card.dashcardId, JSON.stringify(params)],
     enabled: !!instanceId && Number.isFinite(dashboardId),
     queryFn: async () => {
       const client = await createInstanceClient(instanceId as string);
-      return runDashcardQuery(client, dashboardId, card.dashcardId, card.cardId);
+      return runDashcardQuery(client, dashboardId, card.dashcardId, card.cardId, params);
     },
   });
 

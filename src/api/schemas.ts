@@ -106,11 +106,21 @@ export interface DashboardCard {
   display: string | null;
   vizSettings: Record<string, unknown>;
 }
+
+/** A dashboard filter/parameter as returned by GET /api/dashboard/:id. */
+export interface DashboardParameter {
+  id: string;
+  slug: string;
+  /** The parameter's default value; null when not set. */
+  default: unknown;
+}
+
 export interface DashboardDetail {
   id: number;
   name: string;
   description: string | null;
   cards: DashboardCard[];
+  parameters: DashboardParameter[];
 }
 
 // ---- QueryResult (POST .../query) ----
@@ -185,6 +195,21 @@ const DashcardSchema = z
   })
   .passthrough();
 
+const DashboardParameterSchema = z
+  .object({
+    id: z.string().optional(),
+    slug: z.string().optional(),
+    default: z.unknown().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): DashboardParameter => ({
+      id: raw.id ?? '',
+      slug: raw.slug ?? '',
+      default: raw.default !== undefined ? raw.default : null,
+    }),
+  );
+
 export const DashboardDetailSchema = z
   .object({
     id: z.number(),
@@ -193,6 +218,7 @@ export const DashboardDetailSchema = z
     // `dashcards` (v0.50+) with `ordered_cards` as the older fallback.
     dashcards: z.array(DashcardSchema).nullable().optional(),
     ordered_cards: z.array(DashcardSchema).nullable().optional(),
+    parameters: z.array(DashboardParameterSchema).nullable().optional(),
   })
   .passthrough()
   .transform((raw): DashboardDetail => {
@@ -206,10 +232,12 @@ export const DashboardDetailSchema = z
         display: dc.card?.display ?? null,
         vizSettings: dc.card?.visualization_settings ?? {},
       }));
+    const parameters: DashboardParameter[] = raw.parameters ?? [];
     return {
       id: raw.id,
       name: raw.name,
       description: raw.description ?? null,
       cards,
+      parameters,
     };
   });
