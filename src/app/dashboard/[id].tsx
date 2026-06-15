@@ -1,5 +1,14 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +22,10 @@ import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
 
 type InstancesState = { activeInstanceId: string | null };
+type CardParam = { id: string; value: unknown };
+
+/** The card the user tapped, plus the resolved params used to query it. */
+type SelectedCard = { card: DashboardCard; params: CardParam[] };
 
 export default function DashboardScreen() {
   const theme = useTheme();
@@ -22,6 +35,9 @@ export default function DashboardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const dashboardId = Number(id);
   const instanceId = useInstancesStore((s: InstancesState) => s.activeInstanceId);
+
+  // The card opened in the fullscreen modal, or null when the modal is closed.
+  const [selected, setSelected] = React.useState<SelectedCard | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [instanceId, 'dashboard', dashboardId],
@@ -68,36 +84,36 @@ export default function DashboardScreen() {
             const params = (data?.parameters ?? [])
               .filter((p: DashboardParameter) => p.default != null)
               .map((p: DashboardParameter) => ({ id: p.id, value: p.default }));
-            return <DashcardItem dashboardId={dashboardId} card={item} params={params} />;
+            return (
+              <DashcardItem
+                dashboardId={dashboardId}
+                card={item}
+                params={params}
+                onPress={() => setSelected({ card: item, params })}
+              />
+            );
           }}
         />
       )}
+
+      <DashcardModal
+        dashboardId={dashboardId}
+        selected={selected}
+        onClose={() => setSelected(null)}
+      />
     </View>
   );
 }
 
 /**
- * A single dashboard card: its own query for the card's data plus a titled
- * container that shows a spinner while loading, a themed error with the
- * ApiException kind on failure, or the routed <CardView> on success.
- *
- * Rendered as a component (not inline in FlatList's renderItem) so that its
- * useQuery hook is called from a stable component, not conditionally.
+ * The single source of truth for a dashcard's query. Both the inline card and
+ * the fullscreen modal call this with the same arguments, so they share one
+ * React Query cache entry (same queryKey + queryFn) — the modal renders from
+ * cache instantly with no refetch.
  */
-function DashcardItem({
-  dashboardId,
-  card,
-  params,
-}: {
-  dashboardId: number;
-  card: DashboardCard;
-  params: { id: string; value: unknown }[];
-}): React.ReactElement {
-  const theme = useTheme();
-  const { t } = useTranslation();
+function useDashcardQuery(dashboardId: number, card: DashboardCard, params: CardParam[]) {
   const instanceId = useInstancesStore((s: InstancesState) => s.activeInstanceId);
-
-  const { data, isLoading, error } = useQuery({
+  return useQuery({
     queryKey: [instanceId, 'dashcard', dashboardId, card.dashcardId, JSON.stringify(params)],
     enabled: !!instanceId && Number.isFinite(dashboardId),
     queryFn: async () => {
@@ -105,9 +121,37 @@ function DashcardItem({
       return runDashcardQuery(client, dashboardId, card.dashcardId, card.cardId, params);
     },
   });
+}
+
+/**
+ * A single dashboard card: its own query for the card's data plus a titled
+ * container that shows a spinner while loading, a themed error with the
+ * ApiException kind on failure, or the routed <CardView> on success.
+ *
+ * Wrapped in a Pressable so tapping opens a fullscreen modal of the same card.
+ * Rendered as a component (not inline in FlatList's renderItem) so that its
+ * useQuery hook is called from a stable component, not conditionally.
+ */
+function DashcardItem({
+  dashboardId,
+  card,
+  params,
+  onPress,
+}: {
+  dashboardId: number;
+  card: DashboardCard;
+  params: CardParam[];
+  onPress: () => void;
+}): React.ReactElement {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const { data, isLoading, error } = useDashcardQuery(dashboardId, card, params);
 
   return (
-    <View
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={card.name}
+      onPress={onPress}
       style={[
         styles.card,
         {
@@ -134,6 +178,99 @@ function DashcardItem({
           />
         ) : null}
       </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Fullscreen modal showing the tapped card large. It reuses {@link
+ * useDashcardQuery} with the exact same arguments as the inline card, so React
+ * Query serves the cached result instantly. The body honours loading, the
+ * per-card ApiException error, and an empty/null result, and wraps the
+ * <CardView> in a ScrollView so wide tables and tall charts can scroll.
+ */
+function DashcardModal({
+  dashboardId,
+  selected,
+  onClose,
+}: {
+  dashboardId: number;
+  selected: SelectedCard | null;
+  onClose: () => void;
+}): React.ReactElement {
+  return (
+    <Modal
+      visible={selected != null}
+      animationType="slide"
+      onRequestClose={onClose}
+      transparent={false}
+    >
+      {selected != null ? (
+        <DashcardModalContent
+          dashboardId={dashboardId}
+          card={selected.card}
+          params={selected.params}
+          onClose={onClose}
+        />
+      ) : null}
+    </Modal>
+  );
+}
+
+function DashcardModalContent({
+  dashboardId,
+  card,
+  params,
+  onClose,
+}: {
+  dashboardId: number;
+  card: DashboardCard;
+  params: CardParam[];
+  onClose: () => void;
+}): React.ReactElement {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { data, isLoading, error } = useDashcardQuery(dashboardId, card, params);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+      <View style={[styles.bar, { borderBottomColor: theme.colors.border }]}>
+        <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
+          <Text style={{ color: theme.colors.primary, fontSize: 16 }}>{t('dashboard.back')}</Text>
+        </Pressable>
+        <Text numberOfLines={1} style={[styles.barTitle, { color: theme.colors.text }]}>
+          {card.name}
+        </Text>
+        <View style={{ width: 48 }} />
+      </View>
+
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Text style={{ color: theme.colors.danger, textAlign: 'center' }}>
+            {t('errors.generic')} ({error instanceof ApiException ? error.error.kind : 'unknown'})
+          </Text>
+        </View>
+      ) : data ? (
+        <ScrollView contentContainerStyle={{ padding: theme.spacing(4) }}>
+          <CardView
+            display={card.display ?? 'table'}
+            result={data}
+            vizSettings={card.vizSettings}
+            name={card.name}
+          />
+        </ScrollView>
+      ) : (
+        <View style={styles.center}>
+          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
+            {t('chart.noData')}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

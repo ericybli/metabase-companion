@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/ui/i18n';
 import { ApiException } from '@/api/errors';
@@ -75,9 +75,10 @@ describe('DashboardScreen', () => {
 
     await render(<DashboardScreen />, { wrapper });
 
-    // Card titles from the dashboard detail.
+    // Card titles from the dashboard detail. ("Orders" is also a table column
+    // display name, so query the tappable card by its accessibility label.)
     await waitFor(() => expect(screen.getByText('Revenue')).toBeTruthy());
-    expect(screen.getByText('Orders')).toBeTruthy();
+    expect(screen.getByLabelText('Orders')).toBeTruthy();
     expect(mockGetDashboard).toHaveBeenCalledWith({}, 9);
 
     // The scalar card's value and a table cell from the second card render.
@@ -85,6 +86,40 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Acme')).toBeTruthy();
     expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []);
     expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 2, 6, []);
+  });
+
+  it('opens a fullscreen modal showing the tapped card', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[42]],
+      cols: [
+        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Inline card title renders once; the modal is not open yet.
+    await waitFor(() => expect(screen.getByText('Revenue')).toBeTruthy());
+    expect(screen.getAllByText('Revenue')).toHaveLength(1);
+
+    // Tap the card (Pressable exposes the card name as its accessibility label).
+    fireEvent.press(screen.getByLabelText('Revenue'));
+
+    // The modal opens with the card name in its top bar (now two "Revenue"
+    // labels: the inline card title and the modal header) plus the cached value.
+    await waitFor(() => expect(screen.getAllByText('Revenue').length).toBeGreaterThanOrEqual(2));
+    expect(screen.getAllByText('42').length).toBeGreaterThanOrEqual(1);
+    // The modal reuses the inline card's queryKey/queryFn (same args), so its
+    // result comes from the shared React Query cache.
+    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []);
   });
 
   it('shows the empty state when the dashboard has no cards', async () => {
