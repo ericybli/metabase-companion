@@ -303,6 +303,11 @@ function DashcardModal({
   );
 }
 
+/** Top-bar chrome (back / title / rotate row) reserved out of the chart area. */
+const TOP_BAR_HEIGHT = 48;
+/** Comfortable chart height in the portrait (non-rotated) fullscreen view. */
+const PORTRAIT_CHART_HEIGHT = 300;
+
 function DashcardModalContent({
   dashboardId,
   card,
@@ -322,22 +327,36 @@ function DashcardModalContent({
   // Pure transform (no expo-screen-orientation, which needs a dev build).
   const [landscape, setLandscape] = React.useState(false);
 
-  const body = data ? (
-    <ScrollView contentContainerStyle={{ padding: theme.spacing(4) }}>
-      <CardView
-        display={card.display ?? 'table'}
-        result={data}
-        vizSettings={card.vizSettings}
-        name={card.name}
-      />
-    </ScrollView>
-  ) : (
-    <View style={styles.center}>
-      <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
-        {t('chart.noData')}
-      </Text>
-    </View>
-  );
+  // Swapped screen dimensions for the rotated viewport. The rotated content's
+  // visual WIDTH spans the screen height, and its visual HEIGHT spans the screen
+  // width minus the top-bar chrome + insets — so the chart fills the rotated
+  // area instead of staying ~220 tall and being cut off.
+  const screen = Dimensions.get('window');
+  const rotatedWidth = screen.height - insets.top - TOP_BAR_HEIGHT;
+  const rotatedHeight = screen.width;
+  const padding = theme.spacing(4);
+  // Height handed to the chart so it fills the rotated area (vs ~220 default).
+  // Reserve room for padding, the (single) title/legend row, and x-axis labels.
+  const landscapeChartHeight = Math.max(220, rotatedWidth - padding * 2 - 64);
+
+  const renderBody = (chartHeight: number): React.ReactElement =>
+    data ? (
+      <ScrollView contentContainerStyle={{ padding }}>
+        <CardView
+          display={card.display ?? 'table'}
+          result={data}
+          vizSettings={card.vizSettings}
+          name={card.name}
+          height={chartHeight}
+        />
+      </ScrollView>
+    ) : (
+      <View style={styles.center}>
+        <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
+          {t('chart.noData')}
+        </Text>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
@@ -378,34 +397,41 @@ function DashcardModalContent({
           </Text>
         </View>
       ) : landscape ? (
-        <RotatedContainer testID="fullscreen-rotated">{body}</RotatedContainer>
+        <RotatedContainer testID="fullscreen-rotated" width={rotatedWidth} height={rotatedHeight}>
+          {renderBody(landscapeChartHeight)}
+        </RotatedContainer>
       ) : (
-        body
+        renderBody(PORTRAIT_CHART_HEIGHT)
       )}
     </View>
   );
 }
 
 /**
- * Rotate its children 90° and size them to fill (width/height swapped against
- * the screen Dimensions) so wide charts/tables read sideways in a portrait
- * Modal. Pure CSS-style transform — works in Expo Go (no native orientation).
+ * Rotate its children 90° and size them to fill the rotated viewport. The
+ * caller passes the SWAPPED screen dimensions: `width` is the rotated content's
+ * cross-axis (= screen height minus chrome) and `height` is its main axis
+ * (= screen width). Centered so nothing is clipped. Pure CSS-style transform —
+ * works in Expo Go (no native orientation).
  */
 function RotatedContainer({
   children,
   testID,
+  width,
+  height,
 }: {
   children: React.ReactNode;
   testID?: string;
+  width: number;
+  height: number;
 }): React.ReactElement {
-  const { width, height } = Dimensions.get('window');
   return (
     <View style={styles.rotateWrap}>
       <View
         testID={testID}
         style={{
-          width: height,
-          height: width,
+          width,
+          height,
           transform: [{ rotate: '90deg' }],
         }}
       >

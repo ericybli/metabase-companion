@@ -1,8 +1,11 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Dimensions } from 'react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Svg from 'react-native-svg';
 import '@/ui/i18n';
 import { ApiException } from '@/api/errors';
+import { CHART_HEIGHT } from '@/render/chartScale';
 import DashboardScreen from './[id]';
 
 jest.mock('expo-router', () => ({
@@ -159,6 +162,59 @@ describe('DashboardScreen', () => {
     // Toggle OFF -> the rotated container is gone.
     fireEvent.press(screen.getByTestId('fullscreen-rotate'));
     await waitFor(() => expect(screen.queryByTestId('fullscreen-rotated')).toBeNull());
+  });
+
+  it('sizes the fullscreen chart taller in landscape so it fills the rotated viewport', async () => {
+    // Pin the screen dimensions so the rotated-area height is deterministic.
+    const dimsSpy = jest
+      .spyOn(Dimensions, 'get')
+      .mockReturnValue({ width: 390, height: 844, scale: 2, fontScale: 1 });
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Trend', display: 'line', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Jan', 10],
+        ['Feb', 20],
+        ['Mar', 15],
+      ],
+      cols: [
+        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 3,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // The inline card chart renders at the default (~220) height.
+    await waitFor(() => expect(screen.getByLabelText('Trend')).toBeTruthy());
+    const inlineHeights = screen.UNSAFE_getAllByType(Svg).map((n) => Number(n.props.height));
+    expect(inlineHeights).toContain(CHART_HEIGHT);
+
+    // Open the fullscreen modal on the line-chart card.
+    fireEvent.press(screen.getByLabelText('Trend'));
+
+    // Portrait fullscreen: the modal adds a chart at the comfortable portrait
+    // height (300), taller than the inline default (~220).
+    await waitFor(() => expect(screen.getByTestId('fullscreen-rotate')).toBeTruthy());
+    const portraitHeights = screen.UNSAFE_getAllByType(Svg).map((n) => Number(n.props.height));
+    expect(portraitHeights).toContain(300);
+
+    // Toggle landscape ON -> the chart inside the rotated container is sized to
+    // the swapped viewport, much taller than both portrait and the inline default.
+    fireEvent.press(screen.getByTestId('fullscreen-rotate'));
+    const rotated = await screen.findByTestId('fullscreen-rotated');
+    const landscapeSvg = within(rotated).UNSAFE_getAllByType(Svg);
+    const landscapeHeight = Number(landscapeSvg[0]?.props.height);
+    expect(landscapeHeight).toBeGreaterThan(300);
+    expect(landscapeHeight).toBeGreaterThan(CHART_HEIGHT);
+
+    dimsSpy.mockRestore();
   });
 
   it('shows the empty state when the dashboard has no cards', async () => {
