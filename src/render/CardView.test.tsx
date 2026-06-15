@@ -89,4 +89,27 @@ describe('CardView registry', () => {
     expect(screen.getByText('Customer')).toBeTruthy();
     expect(screen.getByText('Acme')).toBeTruthy();
   });
+
+  // Charts must tolerate empty/no-data results without crashing and show the
+  // friendly "no data" message instead of an empty/garbage chart.
+  const emptySeries: QueryResult = {
+    rows: [],
+    cols: [
+      { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+      { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+    ],
+    rowCount: 0,
+  };
+
+  it.each(['bar', 'row', 'line', 'area', 'pie'])(
+    'renders %s with empty rows without throwing and shows the no-data message',
+    async (display) => {
+      // Rendering must not throw on empty data.
+      const { UNSAFE_root } = await render(
+        <CardView display={display} result={emptySeries} vizSettings={{}} name="X" />,
+      );
+      expect(UNSAFE_root).toBeTruthy();
+      expect(screen.getByText('No data')).toBeTruthy();
+    },
+  );
 });

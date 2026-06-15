@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/ui/i18n';
+import { ApiException } from '@/api/errors';
 import DashboardScreen from './[id]';
 
 jest.mock('expo-router', () => ({
@@ -83,5 +84,41 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Acme')).toBeTruthy();
     expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5);
     expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 2, 6);
+  });
+
+  it('shows the empty state when the dashboard has no cards', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Empty',
+      description: null,
+      cards: [],
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() => expect(screen.getByText('This dashboard has no cards.')).toBeTruthy());
+    // No card query runs when there are no cards.
+    expect(mockRunDashcardQuery).not.toHaveBeenCalled();
+  });
+
+  it('renders the per-card error state with the ApiException kind when the query fails', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+    });
+    mockRunDashcardQuery.mockRejectedValue(
+      new ApiException({ kind: 'server', status: 500, message: 'boom' }),
+    );
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // The card title still shows.
+    await waitFor(() => expect(screen.getByText('Revenue')).toBeTruthy());
+    // The themed error surfaces the ApiException kind.
+    await waitFor(() =>
+      expect(screen.getByText('Something went wrong. Please try again. (server)')).toBeTruthy(),
+    );
   });
 });

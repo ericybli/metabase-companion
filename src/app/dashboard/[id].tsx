@@ -12,6 +12,8 @@ import type { DashboardCard } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
 
+type InstancesState = { activeInstanceId: string | null };
+
 export default function DashboardScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -19,9 +21,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const dashboardId = Number(id);
-  const instanceId = useInstancesStore(
-    (s: { activeInstanceId: string | null }) => s.activeInstanceId,
-  );
+  const instanceId = useInstancesStore((s: InstancesState) => s.activeInstanceId);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [instanceId, 'dashboard', dashboardId],
@@ -90,9 +90,7 @@ function DashcardItem({
 }): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
-  const instanceId = useInstancesStore(
-    (s: { activeInstanceId: string | null }) => s.activeInstanceId,
-  );
+  const instanceId = useInstancesStore((s: InstancesState) => s.activeInstanceId);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [instanceId, 'dashcard', dashboardId, card.dashcardId],
