@@ -68,6 +68,35 @@ const bigSeries: QueryResult = {
 const areaCount = (nodes: { props: { fillOpacity?: number } }[]): number =>
   nodes.filter((n) => n.props.fillOpacity === 0.25).length;
 
+// Two series of wildly different magnitudes -> auto-split onto two y-axes.
+const mixedMagnitude: QueryResult = {
+  rows: [
+    ['Jan', 270, 50000],
+    ['Feb', 272, 52000],
+    ['Mar', 268, 48000],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'houses', displayName: 'Houses', baseType: 'type/Integer', semanticType: null },
+    { name: 'income', displayName: 'Income', baseType: 'type/Float', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
+/** Split axis tick labels by side: left axis end-anchored, right axis start-anchored. */
+function axisTicks(getAll: (t: typeof SvgText) => { props: Record<string, unknown> }[]): {
+  left: string[];
+  right: string[];
+} {
+  const nodes = getAll(SvgText);
+  return {
+    left: nodes.filter((n) => n.props.textAnchor === 'end').map((n) => String(n.props.children)),
+    right: nodes.filter((n) => n.props.textAnchor === 'start').map((n) => String(n.props.children)),
+  };
+}
+
 describe('AreaChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<AreaChartView result={threePoint} vizSettings={{}} />);
@@ -156,6 +185,41 @@ describe('AreaChartView', () => {
     );
     const svg = UNSAFE_getAllByType(Svg)[0];
     expect(svg?.props.height).toBe(400);
+  });
+
+  it('renders TWO y-axes for mixed-magnitude series (auto-split)', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={mixedMagnitude} vizSettings={{}} />,
+    );
+    const { left, right } = axisTicks(UNSAFE_getAllByType);
+    expect(left).toContain('0');
+    expect(left).toContain('300');
+    expect(right.length).toBeGreaterThanOrEqual(2);
+    expect(right).toContain('60k');
+    expect(right).not.toContain('300');
+    expect(left).not.toContain('60k');
+  });
+
+  it('renders ONE y-axis for a single series (no right axis)', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={bigSeries} vizSettings={{}} />,
+    );
+    const { left, right } = axisTicks(UNSAFE_getAllByType);
+    expect(left.length).toBeGreaterThanOrEqual(2);
+    expect(right).toHaveLength(0);
+  });
+
+  it('still toggles a series via the legend with dual axes', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={mixedMagnitude} vizSettings={{}} />,
+    );
+    expect(areaCount(UNSAFE_getAllByType(Path))).toBe(2);
+    expect(axisTicks(UNSAFE_getAllByType).right.length).toBeGreaterThan(0);
+
+    // Hide the big (Income) series: model recomputes to a single axis.
+    fireEvent.press(screen.getByTestId('chart-legend-1'));
+    expect(areaCount(UNSAFE_getAllByType(Path))).toBe(1);
+    expect(axisTicks(UNSAFE_getAllByType).right).toHaveLength(0);
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

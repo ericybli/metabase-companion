@@ -1,22 +1,20 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
-import { toChartData } from '@/render/normalize';
 import {
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
-  domainMaxMulti,
-  domainMinMulti,
   getCategoryBands,
-  getLinePointsWithMax,
+  getLinePointsForDomain,
   getPlotArea,
-  paletteColor,
   pickAxisLabelIndices,
   pointsToString,
+  splitLineSegments,
   truncateLabel,
 } from '@/render/chartScale';
+import { buildCartesianModel } from '@/viz/model/cartesianModel';
 import { ChartLegend } from './ChartLegend';
 import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import { ChartYAxis } from './ChartYAxis';
@@ -31,13 +29,14 @@ export interface LineChartViewProps {
 }
 
 /**
- * Line chart: one <Polyline> through scaled points (with a small <Circle> dot at
- * each) per VISIBLE series, each in its own palette color and sharing a y-axis
- * max computed from the visible series only. A left y-axis (gridlines +
- * abbreviated value labels) is drawn. The legend (shown when there is more than
- * one series) is tappable: tapping a series hides it, removing it from the plot
- * AND the y-axis domain so smaller series rescale into view. Renders a themed
- * "no data" message when there is no numeric series.
+ * Line chart driven by the dual-axis cartesian model. Each VISIBLE series is a
+ * <Polyline> (with a small <Circle> dot at each point) in its model-assigned
+ * palette color, scaled to ITS axis (left or right). A LEFT y-axis is always
+ * drawn; when the model auto-splits (`hasSplit`) a RIGHT y-axis with its own
+ * domain + abbreviated labels is drawn too, so a small-magnitude series is
+ * readable instead of crushed flat at the bottom. The legend (multi-series) is
+ * tappable: hiding a series recomputes the model from the visible series so the
+ * axes rescale. Renders a themed "no data" message when there is nothing to plot.
  */
 export function LineChartView({
   result,
@@ -49,11 +48,25 @@ export function LineChartView({
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
   const { selectedIndex, toggleIndex } = useChartTooltip();
 
-  const data = toChartData(result, vizSettings);
-  const seriesCount = data?.series.length ?? 0;
+  // Base model (nothing hidden) gives a stable series count for the hook.
+  const baseModel = useMemo(
+    () => buildCartesianModel(result, vizSettings, {}),
+    [result, vizSettings],
+  );
+  const seriesCount = baseModel?.series.length ?? 0;
   const { hidden, toggle } = useHiddenSeries(seriesCount);
 
-  if (!data || data.series.length === 0 || data.labels.length === 0) {
+  // Recompute the model from the VISIBLE series so hiding rescales the axes.
+  const hiddenSeries = useMemo(
+    () => hidden.map((h, i) => (h ? i : -1)).filter((i) => i >= 0),
+    [hidden],
+  );
+  const model = useMemo(
+    () => buildCartesianModel(result, vizSettings, { hiddenSeries }) ?? baseModel,
+    [result, vizSettings, hiddenSeries, baseModel],
+  );
+
+  if (!model || model.series.length === 0 || model.labels.length === 0) {
     return (
       <View style={styles.container}>
         <Text style={[styles.noData, { color: theme.colors.textMuted }]}>{t('chart.noData')}</Text>
@@ -68,17 +81,14 @@ export function LineChartView({
     }
   };
 
-  const plot = getPlotArea(width, height);
-  // Domain spans only the visible series, so hiding a large series rescales.
-  const visibleValues = data.series.filter((_, i) => !hidden[i]).map((s) => s.values);
-  const max = domainMaxMulti(visibleValues);
-  const seriesPoints = data.series.map((s) => getLinePointsWithMax(s.values, plot, max));
-  const min = domainMinMulti(visibleValues);
+  const plot = getPlotArea(width, height, model.hasSplit);
+  const left = model.left ?? { min: 0, max: 1 };
+  const right = model.right;
   // Thin out the x-axis labels so they don't overlap; points stay one-per-value.
-  const labelIndices = pickAxisLabelIndices(data.labels.length);
-  const multi = data.series.length > 1;
+  const labelIndices = pickAxisLabelIndices(model.labels.length);
+  const multi = model.series.length > 1;
   // One full-height transparent touch band per point for tap-for-value.
-  const touchBands = getCategoryBands(data.labels.length, plot);
+  const touchBands = getCategoryBands(model.labels.length, plot);
   const anchorX =
     selectedIndex !== null ? (touchBands[selectedIndex]?.centerX ?? plot.innerLeft) : 0;
 
@@ -86,13 +96,13 @@ export function LineChartView({
     <View style={styles.container} onLayout={onLayout}>
       {!multi ? (
         <Text style={[styles.title, { color: theme.colors.textMuted }]} numberOfLines={1}>
-          {data.series[0]?.name ?? ''}
+          {model.series[0]?.name ?? ''}
         </Text>
       ) : null}
       {multi ? (
         <ChartLegend
-          names={data.series.map((s) => s.name)}
-          colorAt={paletteColor}
+          names={model.series.map((s) => s.name)}
+          colorAt={(i) => model.series[i]?.color ?? theme.colors.primary}
           hidden={hidden}
           onToggle={toggle}
         />
@@ -100,32 +110,50 @@ export function LineChartView({
       <View>
         <Svg width={width} height={height}>
           <ChartYAxis
-            min={min}
-            max={max}
+            min={left.min}
+            max={left.max}
             plot={plot}
             gridColor={theme.colors.border}
             labelColor={theme.colors.textMuted}
+            side="left"
           />
-          {seriesPoints.map((points, si) => {
-            if (hidden[si]) {
+          {model.hasSplit && right ? (
+            <ChartYAxis
+              min={right.min}
+              max={right.max}
+              plot={plot}
+              gridColor={theme.colors.border}
+              labelColor={theme.colors.textMuted}
+              side="right"
+            />
+          ) : null}
+          {model.series.map((s, si) => {
+            if (s.hidden) {
               return null;
             }
-            const color = paletteColor(si);
+            const domain = s.axis === 'right' && right ? right : left;
+            const points = getLinePointsForDomain(s.values, plot, domain.min, domain.max);
+            const segments = splitLineSegments(points);
             return (
               <React.Fragment key={`series-${si}`}>
-                {points.length > 1 ? (
-                  <Polyline
-                    points={pointsToString(points)}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                ) : null}
-                {points.map((p, i) => (
-                  <Circle key={`dot-${si}-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
-                ))}
+                {segments.map((seg, segi) =>
+                  seg.length > 1 ? (
+                    <Polyline
+                      key={`seg-${si}-${segi}`}
+                      points={pointsToString(seg)}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ) : null,
+                )}
+                {segments.flatMap((seg, segi) =>
+                  seg.map((p, i) => (
+                    <Circle key={`dot-${si}-${segi}-${i}`} cx={p.x} cy={p.y} r={3} fill={s.color} />
+                  )),
+                )}
               </React.Fragment>
             );
           })}
@@ -138,7 +166,7 @@ export function LineChartView({
               fill={theme.colors.textMuted}
               textAnchor="middle"
             >
-              {truncateLabel(data.labels[i] ?? '')}
+              {truncateLabel(model.labels[i] ?? '')}
             </SvgText>
           ))}
           {touchBands.map((band) => (
@@ -155,7 +183,8 @@ export function LineChartView({
           ))}
         </Svg>
         <ChartTooltip
-          data={data}
+          labels={model.labels}
+          series={model.series}
           selectedIndex={selectedIndex}
           anchorX={anchorX}
           width={width}

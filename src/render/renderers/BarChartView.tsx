@@ -1,21 +1,19 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
-import { toChartData } from '@/render/normalize';
 import {
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
-  domainMaxMulti,
-  domainMinMulti,
   getCategoryBands,
-  getGroupedBarGeometry,
+  getGroupedBarGeometryForDomains,
   getPlotArea,
-  paletteColor,
   pickAxisLabelIndices,
   truncateLabel,
+  type DomainSeries,
 } from '@/render/chartScale';
+import { buildCartesianModel } from '@/viz/model/cartesianModel';
 import { ChartLegend } from './ChartLegend';
 import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import { ChartYAxis } from './ChartYAxis';
@@ -30,13 +28,14 @@ export interface BarChartViewProps {
 }
 
 /**
- * Bar chart: grouped bars — for each label, one <Rect> per VISIBLE series
- * side-by-side, each in its own palette color and sharing a y-axis max computed
- * from the visible series only. A left y-axis (gridlines + abbreviated value
- * labels) is drawn. The legend (shown when there is more than one series) is
- * tappable: tapping a series hides it, which removes it from the plot AND the
- * y-axis domain so smaller series rescale into view. Renders a themed "no data"
- * message when there is no numeric series.
+ * Bar chart driven by the dual-axis cartesian model: grouped bars — for each
+ * label, one <Rect> per VISIBLE series side-by-side, in its model-assigned
+ * palette color and scaled to ITS axis (left or right). A LEFT y-axis is always
+ * drawn; when the model auto-splits (`hasSplit`) a RIGHT y-axis with its own
+ * domain + abbreviated labels is drawn too, so a small-magnitude series is
+ * readable. The legend (multi-series) is tappable: hiding a series recomputes
+ * the model from the visible series so the axes rescale. Renders a themed "no
+ * data" message when there is nothing to plot.
  */
 export function BarChartView({
   result,
@@ -48,11 +47,23 @@ export function BarChartView({
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
   const { selectedIndex, toggleIndex } = useChartTooltip();
 
-  const data = toChartData(result, vizSettings);
-  const seriesCount = data?.series.length ?? 0;
+  const baseModel = useMemo(
+    () => buildCartesianModel(result, vizSettings, {}),
+    [result, vizSettings],
+  );
+  const seriesCount = baseModel?.series.length ?? 0;
   const { hidden, toggle } = useHiddenSeries(seriesCount);
 
-  if (!data || data.series.length === 0 || data.labels.length === 0) {
+  const hiddenSeries = useMemo(
+    () => hidden.map((h, i) => (h ? i : -1)).filter((i) => i >= 0),
+    [hidden],
+  );
+  const model = useMemo(
+    () => buildCartesianModel(result, vizSettings, { hiddenSeries }) ?? baseModel,
+    [result, vizSettings, hiddenSeries, baseModel],
+  );
+
+  if (!model || model.series.length === 0 || model.labels.length === 0) {
     return (
       <View style={styles.container}>
         <Text style={[styles.noData, { color: theme.colors.textMuted }]}>{t('chart.noData')}</Text>
@@ -67,20 +78,26 @@ export function BarChartView({
     }
   };
 
-  const plot = getPlotArea(width, height);
-  // Hidden series are excluded from the domain so the axis rescales to the
-  // visible data; we still draw a placeholder slot per series so visible bars
-  // keep their palette color and band position.
-  const visibleValues = data.series.filter((_, i) => !hidden[i]).map((s) => s.values);
-  const max = domainMaxMulti(visibleValues);
-  const min = domainMinMulti(visibleValues);
-  // Per-series geometry, masking hidden series to an empty band of zero-height bars.
-  const maskedSeries = data.series.map((s, i) => (hidden[i] ? [] : s.values));
-  const bars = getGroupedBarGeometry(maskedSeries, data.labels.length, plot, max).filter(
-    (bar) => !hidden[bar.seriesIndex],
+  const plot = getPlotArea(width, height, model.hasSplit);
+  const left = model.left ?? { min: 0, max: 1 };
+  const right = model.right;
+
+  // Per-series geometry: each series scales to its assigned axis. Hidden series
+  // collapse to an empty band (no values) so visible bars keep their position.
+  const domainSeries: DomainSeries[] = model.series.map((s) => {
+    const domain = s.axis === 'right' && right ? right : left;
+    return {
+      values: s.hidden ? [] : s.values,
+      min: domain.min,
+      max: domain.max,
+    };
+  });
+  const bars = getGroupedBarGeometryForDomains(domainSeries, model.labels.length, plot).filter(
+    (bar) => !model.series[bar.seriesIndex]?.hidden,
   );
+
   // Thin out the x-axis labels so they don't overlap; bars stay one-per-value.
-  const labelIndices = pickAxisLabelIndices(data.labels.length);
+  const labelIndices = pickAxisLabelIndices(model.labels.length);
   // First bar per label band gives us the band center for label placement.
   const bandCenters = new Map<number, number>();
   for (const bar of bars) {
@@ -88,22 +105,22 @@ export function BarChartView({
       bandCenters.set(bar.labelIndex, bar.centerX);
     }
   }
-  const multi = data.series.length > 1;
+  const multi = model.series.length > 1;
   // One full-height transparent touch band per label for tap-for-value.
-  const touchBands = getCategoryBands(data.labels.length, plot);
+  const touchBands = getCategoryBands(model.labels.length, plot);
   const anchorX = selectedIndex !== null ? (touchBands[selectedIndex]?.centerX ?? 0) : 0;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
       {!multi ? (
         <Text style={[styles.title, { color: theme.colors.textMuted }]} numberOfLines={1}>
-          {data.series[0]?.name ?? ''}
+          {model.series[0]?.name ?? ''}
         </Text>
       ) : null}
       {multi ? (
         <ChartLegend
-          names={data.series.map((s) => s.name)}
-          colorAt={paletteColor}
+          names={model.series.map((s) => s.name)}
+          colorAt={(i) => model.series[i]?.color ?? theme.colors.primary}
           hidden={hidden}
           onToggle={toggle}
         />
@@ -111,12 +128,23 @@ export function BarChartView({
       <View>
         <Svg width={width} height={height}>
           <ChartYAxis
-            min={min}
-            max={max}
+            min={left.min}
+            max={left.max}
             plot={plot}
             gridColor={theme.colors.border}
             labelColor={theme.colors.textMuted}
+            side="left"
           />
+          {model.hasSplit && right ? (
+            <ChartYAxis
+              min={right.min}
+              max={right.max}
+              plot={plot}
+              gridColor={theme.colors.border}
+              labelColor={theme.colors.textMuted}
+              side="right"
+            />
+          ) : null}
           {bars.map((bar, i) => (
             <Rect
               key={`bar-${i}`}
@@ -125,7 +153,7 @@ export function BarChartView({
               width={bar.width}
               height={bar.height}
               rx={2}
-              fill={paletteColor(bar.seriesIndex)}
+              fill={model.series[bar.seriesIndex]?.color ?? theme.colors.primary}
             />
           ))}
           {labelIndices.map((i) => (
@@ -137,7 +165,7 @@ export function BarChartView({
               fill={theme.colors.textMuted}
               textAnchor="middle"
             >
-              {truncateLabel(data.labels[i] ?? '')}
+              {truncateLabel(model.labels[i] ?? '')}
             </SvgText>
           ))}
           {touchBands.map((band) => (
@@ -154,7 +182,8 @@ export function BarChartView({
           ))}
         </Svg>
         <ChartTooltip
-          data={data}
+          labels={model.labels}
+          series={model.series}
           selectedIndex={selectedIndex}
           anchorX={anchorX}
           width={width}

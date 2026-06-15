@@ -21,6 +21,13 @@ export const CHART_PADDING = {
 } as const;
 
 /**
+ * Extra right padding (px) reserved when a RIGHT y-axis is drawn (the auto-split
+ * dual-axis case), so the right-side value labels have room and don't clip the
+ * chart edge. Kept compact so the plot stays readable on a phone.
+ */
+export const RIGHT_AXIS_PADDING = 38;
+
+/**
  * A small categorical palette used by the pie renderer (and any other
  * multi-series chart). Tuned to read well on both light and dark themes.
  */
@@ -65,15 +72,21 @@ export interface PlotArea {
  * Compute the inner plot rectangle for a chart of the given outer size.
  * Width falls back to {@link DEFAULT_CHART_WIDTH} when a non-positive value
  * is supplied (e.g. before the first layout pass).
+ *
+ * When `reserveRightAxis` is true (the auto-split dual-axis case) the right edge
+ * is pulled in by {@link RIGHT_AXIS_PADDING} so the right y-axis value labels
+ * have room.
  */
 export function getPlotArea(
   width: number = DEFAULT_CHART_WIDTH,
   height: number = CHART_HEIGHT,
+  reserveRightAxis = false,
 ): PlotArea {
   const safeWidth = width > 0 ? width : DEFAULT_CHART_WIDTH;
   const safeHeight = height > 0 ? height : CHART_HEIGHT;
   const innerLeft = CHART_PADDING.left;
-  const innerRight = Math.max(innerLeft, safeWidth - CHART_PADDING.right);
+  const rightPad = CHART_PADDING.right + (reserveRightAxis ? RIGHT_AXIS_PADDING : 0);
+  const innerRight = Math.max(innerLeft, safeWidth - rightPad);
   const innerTop = CHART_PADDING.top;
   const innerBottom = Math.max(innerTop, safeHeight - CHART_PADDING.bottom);
   return {
@@ -243,9 +256,131 @@ export function getGroupedBarGeometry(
   return bars;
 }
 
+/** A series' values paired with the [min, max] domain it should scale against. */
+export interface DomainSeries {
+  values: readonly (number | null)[];
+  min: number;
+  max: number;
+}
+
+/**
+ * Grouped bars where each series scales against ITS OWN [min, max] domain (the
+ * auto-split dual-axis case). Layout matches {@link getGroupedBarGeometry} — one
+ * bar per series side-by-side within each label band — but the bar height comes
+ * from the series' assigned domain rather than a single shared max. `null` /
+ * non-finite values produce a zero-height (invisible) bar. Bars are returned
+ * label-major then series-major, each tagged with its indices.
+ */
+export function getGroupedBarGeometryForDomains(
+  series: readonly DomainSeries[],
+  labelCount: number,
+  plot: PlotArea,
+): GroupedBar[] {
+  const seriesCount = series.length;
+  if (seriesCount === 0 || labelCount === 0) {
+    return [];
+  }
+  const bandWidth = plot.innerWidth / labelCount;
+  const groupWidth = bandWidth * 0.8;
+  const barWidth = Math.max(1, groupWidth / seriesCount);
+  const bars: GroupedBar[] = [];
+  for (let labelIndex = 0; labelIndex < labelCount; labelIndex++) {
+    const bandStart = plot.innerLeft + labelIndex * bandWidth;
+    const groupStart = bandStart + (bandWidth - groupWidth) / 2;
+    for (let seriesIndex = 0; seriesIndex < seriesCount; seriesIndex++) {
+      const s = series[seriesIndex];
+      const raw = s?.values[labelIndex];
+      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
+      const min = s?.min ?? 0;
+      const max = s?.max ?? 1;
+      const x = groupStart + seriesIndex * barWidth;
+      // Baseline is the domain's zero (or its min when the domain is all-positive
+      // / all-negative): bars grow from the larger of 0 and min.
+      const baseline = valueToYRange(Math.max(min, 0), min, max, plot);
+      const top = valueToYRange(value, min, max, plot);
+      const y = Math.min(baseline, top);
+      const height = Math.max(0, Math.abs(baseline - top));
+      bars.push({
+        x,
+        y,
+        width: barWidth,
+        height,
+        centerX: bandStart + bandWidth / 2,
+        seriesIndex,
+        labelIndex,
+      });
+    }
+  }
+  return bars;
+}
+
 export interface LinePoint {
   x: number;
   y: number;
+}
+
+/**
+ * A line point that may be a GAP (null value). `y === null` marks a missing data
+ * point so the renderer can break the polyline and skip the dot there.
+ */
+export interface MaybeLinePoint {
+  x: number;
+  y: number | null;
+}
+
+/**
+ * Compute evenly spaced line/area points scaled to an explicit [min, max]
+ * domain (used by the dual-axis renderers so each series plots against ITS
+ * assigned axis). `null` values become gaps (y === null): the caller breaks the
+ * line and omits the dot there. A single value is centered; multiple values span
+ * the full inner width edge-to-edge.
+ */
+export function getLinePointsForDomain(
+  values: readonly (number | null)[],
+  plot: PlotArea,
+  min: number,
+  max: number,
+): MaybeLinePoint[] {
+  const count = values.length;
+  if (count === 0) {
+    return [];
+  }
+  const toY = (v: number | null): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? valueToYRange(v, min, max, plot) : null;
+  if (count === 1) {
+    const x = plot.innerLeft + plot.innerWidth / 2;
+    return [{ x, y: toY(values[0] ?? null) }];
+  }
+  const step = plot.innerWidth / (count - 1);
+  return values.map((value, i) => ({
+    x: plot.innerLeft + i * step,
+    y: toY(value),
+  }));
+}
+
+/**
+ * Split a list of (possibly gapped) points into contiguous runs of non-null
+ * points. Each run is a polyline segment; single-point runs are still returned
+ * so the caller can draw the dot. This lets a series with missing values render
+ * as several disconnected line segments instead of jumping through the gaps.
+ */
+export function splitLineSegments(points: readonly MaybeLinePoint[]): LinePoint[][] {
+  const runs: LinePoint[][] = [];
+  let current: LinePoint[] = [];
+  for (const p of points) {
+    if (p.y === null) {
+      if (current.length > 0) {
+        runs.push(current);
+        current = [];
+      }
+      continue;
+    }
+    current.push({ x: p.x, y: p.y });
+  }
+  if (current.length > 0) {
+    runs.push(current);
+  }
+  return runs;
 }
 
 /**
@@ -296,6 +431,21 @@ export function buildAreaPath(points: LinePoint[], plot: PlotArea): string {
   const last = points[points.length - 1]!;
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
   return `${line} L${last.x},${plot.innerBottom} L${first.x},${plot.innerBottom} Z`;
+}
+
+/**
+ * Build the SVG path `d` for a filled area down to an explicit baseline y
+ * (instead of the plot bottom). Used by the dual-axis area renderer so a series
+ * fills down to its axis' zero baseline. Returns '' for empty input.
+ */
+export function buildAreaPathToBaseline(points: LinePoint[], baselineY: number): string {
+  if (points.length === 0) {
+    return '';
+  }
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  return `${line} L${last.x},${baselineY} L${first.x},${baselineY} Z`;
 }
 
 export interface PieSlice {

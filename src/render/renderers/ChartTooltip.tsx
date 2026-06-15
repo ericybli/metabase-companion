@@ -1,14 +1,19 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/ui/ThemeProvider';
-import type { ChartData } from '@/render/normalize';
 
 /** Format a chart value for display in the tooltip. */
-function formatTooltipValue(value: number): string {
-  if (!Number.isFinite(value)) {
+function formatTooltipValue(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
     return '—';
   }
   return value.toLocaleString();
+}
+
+/** Minimal series shape the tooltip reads: a name and per-label values. */
+export interface TooltipSeries {
+  name: string;
+  values: readonly (number | null)[];
 }
 
 export interface UseChartTooltip {
@@ -35,8 +40,10 @@ export function useChartTooltip(): UseChartTooltip {
 }
 
 export interface ChartTooltipProps {
-  /** The chart data (labels + series) the tooltip reads from. */
-  data: ChartData;
+  /** X-axis category labels. */
+  labels: readonly string[];
+  /** Series (name + values) the tooltip reads each selected value from. */
+  series: readonly TooltipSeries[];
   /** The selected x-index, or null to render nothing. */
   selectedIndex: number | null;
   /** Plot center x of the selected band, used to anchor the tooltip. */
@@ -59,7 +66,8 @@ const TOOLTIP_WIDTH = 140;
  * is selected.
  */
 export function ChartTooltip({
-  data,
+  labels,
+  series,
   selectedIndex,
   anchorX,
   width,
@@ -69,7 +77,7 @@ export function ChartTooltip({
   if (selectedIndex === null) {
     return null;
   }
-  const label = data.labels[selectedIndex];
+  const label = labels[selectedIndex];
   if (label === undefined) {
     return null;
   }
@@ -96,14 +104,14 @@ export function ChartTooltip({
       <Text style={[styles.label, { color: theme.colors.text }]} numberOfLines={1}>
         {label}
       </Text>
-      {data.series.map((s, si) =>
+      {series.map((s, si) =>
         hidden?.[si] ? null : (
           <Text
             key={`tt-${si}`}
             style={[styles.row, { color: theme.colors.textMuted }]}
             numberOfLines={1}
           >
-            {s.name}: {formatTooltipValue(s.values[selectedIndex] ?? 0)}
+            {s.name}: {formatTooltipValue(s.values[selectedIndex] ?? null)}
           </Text>
         ),
       )}

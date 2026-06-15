@@ -65,6 +65,39 @@ const bigSeries: QueryResult = {
   error: null,
 };
 
+// Two series of wildly different magnitudes: the auto-split should give them
+// their own y-axes (a small series on one side, a big one on the other).
+const mixedMagnitude: QueryResult = {
+  rows: [
+    ['Jan', 270, 50000],
+    ['Feb', 272, 52000],
+    ['Mar', 268, 48000],
+  ],
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'houses', displayName: 'Houses', baseType: 'type/Integer', semanticType: null },
+    { name: 'income', displayName: 'Income', baseType: 'type/Float', semanticType: null },
+  ],
+  rowCount: 3,
+  status: 'completed',
+  error: null,
+};
+
+/** Collect axis tick labels split by side: left axis is end-anchored, right is start-anchored. */
+function axisTicks(getAll: (t: typeof SvgText) => { props: Record<string, unknown> }[]): {
+  left: string[];
+  right: string[];
+} {
+  const nodes = getAll(SvgText);
+  const left = nodes
+    .filter((n) => n.props.textAnchor === 'end')
+    .map((n) => String(n.props.children));
+  const right = nodes
+    .filter((n) => n.props.textAnchor === 'start')
+    .map((n) => String(n.props.children));
+  return { left, right };
+}
+
 describe('LineChartView', () => {
   it('renders a 3-point series with the metric name', async () => {
     const { UNSAFE_root } = await render(<LineChartView result={threePoint} vizSettings={{}} />);
@@ -163,6 +196,47 @@ describe('LineChartView', () => {
     );
     const svg = UNSAFE_getAllByType(Svg)[0];
     expect(svg?.props.height).toBe(400);
+  });
+
+  it('renders TWO y-axes for mixed-magnitude series (auto-split)', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <LineChartView result={mixedMagnitude} vizSettings={{}} />,
+    );
+    const { left, right } = axisTicks(UNSAFE_getAllByType);
+    // Left axis (end-anchored) carries the small-magnitude domain (0..300).
+    expect(left).toContain('0');
+    expect(left).toContain('300');
+    // Right axis (start-anchored) exists and carries the big-magnitude domain.
+    expect(right.length).toBeGreaterThanOrEqual(2);
+    expect(right).toContain('60k');
+    // The big series scales to the right axis, the small one to the left.
+    expect(right).not.toContain('300');
+    expect(left).not.toContain('60k');
+  });
+
+  it('renders ONE y-axis for a single series (no right axis)', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <LineChartView result={bigSeries} vizSettings={{}} />,
+    );
+    const { left, right } = axisTicks(UNSAFE_getAllByType);
+    expect(left.length).toBeGreaterThanOrEqual(2);
+    // No right-side (start-anchored) y-axis ticks when there is no split.
+    expect(right).toHaveLength(0);
+  });
+
+  it('still toggles a series via the legend with dual axes', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <LineChartView result={mixedMagnitude} vizSettings={{}} />,
+    );
+    // Two series -> two polylines; right axis present.
+    expect(UNSAFE_getAllByType(Polyline)).toHaveLength(2);
+    expect(axisTicks(UNSAFE_getAllByType).right.length).toBeGreaterThan(0);
+
+    // Hide the big (Income) series: only the small series remains, the model
+    // recomputes to a single axis (no split).
+    fireEvent.press(screen.getByTestId('chart-legend-1'));
+    expect(UNSAFE_getAllByType(Polyline)).toHaveLength(1);
+    expect(axisTicks(UNSAFE_getAllByType).right).toHaveLength(0);
   });
 
   it('shows no-data when there is no numeric metric column', async () => {
