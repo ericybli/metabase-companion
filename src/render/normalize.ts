@@ -1,4 +1,5 @@
 import { type QueryColumn, type QueryResult } from '@/api/schemas';
+import { formatValue as formatValueRich } from '@/viz/format';
 
 /**
  * Returns true for numeric Metabase base types.
@@ -15,45 +16,17 @@ export function isNumericType(baseType: string): boolean {
 
 /**
  * Format a cell value for display.
- * - null/undefined → '—'
- * - numeric: format as number; prefix '$' for Currency, multiply × 100 + '%' for Percentage
- * - date/datetime/time: human-readable string
- * - everything else: String(value)
+ *
+ * Delegates to the rich value dispatcher in `@/viz/format`, which formats numbers
+ * (currency / percent / compact / separators), dates/times (per temporal unit), and
+ * booleans/objects, while preserving the app's existing contract:
+ * - null/undefined/'' → '—'
+ * - numeric → grouped number; currency → '$1,234.50'; percentage → '12.34%'
+ * - date/datetime/time → human-readable string (passthrough for unparseable values)
+ * - everything else → String(value)
  */
 export function formatValue(value: unknown, col: QueryColumn): string {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-
-  const { baseType, semanticType } = col;
-
-  // Numeric types
-  if (isNumericType(baseType) || typeof value === 'number') {
-    const num = Number(value);
-    if (isNaN(num)) {
-      return String(value);
-    }
-    if (semanticType === 'type/Currency') {
-      return '$' + num.toLocaleString();
-    }
-    if (semanticType === 'type/Percentage') {
-      return (num * 100).toFixed(2) + '%';
-    }
-    return num.toLocaleString();
-  }
-
-  // Date / DateTime / Time types
-  if (baseType.startsWith('type/Date') || baseType.startsWith('type/Time')) {
-    if (typeof value === 'string' || typeof value === 'number') {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleString();
-      }
-    }
-    return String(value);
-  }
-
-  return String(value);
+  return formatValueRich(value, col, undefined);
 }
 
 /**

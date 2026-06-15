@@ -128,29 +128,32 @@ describe('formatValue', () => {
       expect(result.startsWith('$')).toBe(true);
     });
 
-    it('includes the numeric value after "$"', () => {
+    it('includes the grouped numeric value after "$"', () => {
       const result = formatValue(1234, currencyCol);
-      expect(result).toContain('1');
-      expect(result).toContain('234');
+      expect(result).toBe('$1,234.00');
     });
 
     it('handles zero currency', () => {
-      expect(formatValue(0, currencyCol)).toBe('$0');
+      expect(formatValue(0, currencyCol)).toBe('$0.00');
     });
   });
 
   describe('percentage', () => {
     it('multiplies by 100 and appends "%" for type/Percentage', () => {
       const result = formatValue(0.75, percentCol);
-      expect(result).toBe('75.00%');
+      expect(result).toBe('75%');
+    });
+
+    it('keeps fractional percentages', () => {
+      expect(formatValue(0.1234, percentCol)).toBe('12.34%');
     });
 
     it('handles 0%', () => {
-      expect(formatValue(0, percentCol)).toBe('0.00%');
+      expect(formatValue(0, percentCol)).toBe('0%');
     });
 
     it('handles 1 (100%)', () => {
-      expect(formatValue(1, percentCol)).toBe('100.00%');
+      expect(formatValue(1, percentCol)).toBe('100%');
     });
   });
 
@@ -191,8 +194,8 @@ describe('formatValue', () => {
       expect(formatValue(true, textCol)).toBe('true');
     });
 
-    it('converts objects to string', () => {
-      expect(formatValue({ a: 1 }, textCol)).toBe('[object Object]');
+    it('converts objects to a JSON string', () => {
+      expect(formatValue({ a: 1 }, textCol)).toBe('{"a":1}');
     });
   });
 });
