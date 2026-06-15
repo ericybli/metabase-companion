@@ -124,6 +124,8 @@ export interface QueryResult {
   rows: unknown[][];
   cols: QueryColumn[];
   rowCount: number;
+  status: string;
+  error: string | null;
 }
 
 const QueryColumnSchema = z
@@ -152,6 +154,8 @@ export const QueryResultSchema = z
       })
       .passthrough(),
     row_count: z.number().optional(),
+    status: z.string().optional(),
+    error: z.string().nullable().optional(),
   })
   .passthrough()
   .transform(
@@ -159,6 +163,8 @@ export const QueryResultSchema = z
       rows: raw.data.rows,
       cols: raw.data.cols,
       rowCount: raw.row_count ?? raw.data.rows.length,
+      status: raw.status ?? 'completed',
+      error: raw.error ?? null,
     }),
   );
 

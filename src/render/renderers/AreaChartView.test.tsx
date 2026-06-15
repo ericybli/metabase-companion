@@ -15,6 +15,8 @@ const threePoint: QueryResult = {
     { name: 'visits', displayName: 'Visits', baseType: 'type/Integer', semanticType: null },
   ],
   rowCount: 3,
+  status: 'completed',
+  error: null,
 };
 
 describe('AreaChartView', () => {
@@ -31,6 +33,8 @@ describe('AreaChartView', () => {
       rows: [['a'], ['b']],
       cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     };
     await render(<AreaChartView result={result} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();

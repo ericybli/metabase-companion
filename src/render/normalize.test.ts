@@ -13,7 +13,7 @@ function makeCol(
 }
 
 function makeResult(cols: QueryColumn[], rows: unknown[][]): QueryResult {
-  return { cols, rows, rowCount: rows.length };
+  return { cols, rows, rowCount: rows.length, status: 'completed', error: null };
 }
 
 // ============================================================

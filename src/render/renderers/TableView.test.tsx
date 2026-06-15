@@ -13,6 +13,8 @@ describe('TableView', () => {
         { name: 'orders', displayName: 'Orders', baseType: 'type/Integer', semanticType: null },
       ],
       rowCount: 1,
+      status: 'completed',
+      error: null,
     };
     await render(<TableView result={result} />);
     expect(screen.getByText('Customer')).toBeTruthy();
@@ -27,6 +29,8 @@ describe('TableView', () => {
       rows,
       cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
       rowCount: 150,
+      status: 'completed',
+      error: null,
     };
     await render(<TableView result={result} />);
     expect(screen.getByText('Showing 100 of 150')).toBeTruthy();

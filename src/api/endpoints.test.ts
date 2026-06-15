@@ -138,6 +138,8 @@ describe('endpoints', () => {
       rows: [[10], [20]],
       cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     });
   });
 
@@ -178,6 +180,8 @@ describe('endpoints', () => {
         },
       ],
       rowCount: 1,
+      status: 'completed',
+      error: null,
     });
   });
 });

@@ -15,6 +15,8 @@ const threePoint: QueryResult = {
     { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
   ],
   rowCount: 3,
+  status: 'completed',
+  error: null,
 };
 
 describe('BarChartView', () => {
@@ -31,6 +33,8 @@ describe('BarChartView', () => {
       rows: [['a'], ['b']],
       cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     };
     await render(<BarChartView result={result} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();

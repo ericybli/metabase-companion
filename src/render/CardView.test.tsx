@@ -8,6 +8,8 @@ const scalarResult: QueryResult = {
   rows: [[42]],
   cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
   rowCount: 1,
+  status: 'completed',
+  error: null,
 };
 
 const seriesResult: QueryResult = {
@@ -20,6 +22,8 @@ const seriesResult: QueryResult = {
     { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
   ],
   rowCount: 2,
+  status: 'completed',
+  error: null,
 };
 
 const tableResult: QueryResult = {
@@ -29,6 +33,8 @@ const tableResult: QueryResult = {
     { name: 'orders', displayName: 'Orders', baseType: 'type/Integer', semanticType: null },
   ],
   rowCount: 1,
+  status: 'completed',
+  error: null,
 };
 
 describe('CardView registry', () => {
@@ -99,6 +105,8 @@ describe('CardView registry', () => {
       { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
     ],
     rowCount: 0,
+    status: 'completed',
+    error: null,
   };
 
   it.each(['bar', 'row', 'line', 'area', 'pie'])(
@@ -112,4 +120,41 @@ describe('CardView registry', () => {
       expect(screen.getByText('No data')).toBeTruthy();
     },
   );
+
+  it('shows the error message when result.error is set (not chart / no-data)', async () => {
+    const failedResult: QueryResult = {
+      rows: [],
+      cols: [],
+      rowCount: 0,
+      status: 'failed',
+      error: 'Database connection error',
+    };
+    await render(<CardView display="scalar" result={failedResult} vizSettings={{}} name="X" />);
+    expect(screen.getByText('Database connection error')).toBeTruthy();
+  });
+
+  it('shows the generic query-failed label when status is non-completed and error is null', async () => {
+    const failedResult: QueryResult = {
+      rows: [],
+      cols: [],
+      rowCount: 0,
+      status: 'failed',
+      error: null,
+    };
+    await render(<CardView display="scalar" result={failedResult} vizSettings={{}} name="X" />);
+    expect(screen.getByText('Query failed')).toBeTruthy();
+  });
+
+  it('does NOT show a chart or no-data text when result is failed', async () => {
+    const failedResult: QueryResult = {
+      rows: [],
+      cols: [],
+      rowCount: 0,
+      status: 'failed',
+      error: 'Some error',
+    };
+    await render(<CardView display="bar" result={failedResult} vizSettings={{}} name="X" />);
+    expect(screen.queryByText('No data')).toBeNull();
+    expect(screen.getByText('Some error')).toBeTruthy();
+  });
 });

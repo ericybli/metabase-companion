@@ -24,6 +24,9 @@ export interface CardViewProps {
  *   pie -> PieChartView. Any unknown display falls back to TableView (we
  *   always have the rows) prefixed by a small note that explains the
  *   substitution.
+ *
+ * If the result carries an error or a non-completed status, renders a themed
+ * error message instead of a chart or "No data".
  */
 export function CardView({
   display,
@@ -31,6 +34,19 @@ export function CardView({
   vizSettings,
   name,
 }: CardViewProps): React.ReactElement {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  // Surface query failures before attempting any renderer.
+  if (result.error != null || (result.status !== undefined && result.status !== 'completed')) {
+    const message = result.error ?? t('chart.queryFailed');
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[styles.errorText, { color: theme.colors.danger }]}>{message}</Text>
+      </View>
+    );
+  }
+
   switch (display) {
     case 'scalar':
     case 'smartscalar':
@@ -73,4 +89,6 @@ function UnsupportedTable({
 
 const styles = StyleSheet.create({
   note: { fontSize: 12, marginBottom: 8 },
+  errorContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
+  errorText: { fontSize: 14, textAlign: 'center' },
 });

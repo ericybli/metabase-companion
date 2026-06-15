@@ -56,6 +56,7 @@ export const resources = {
         noData: 'No data',
         showingNofM: 'Showing {{shown}} of {{total}}',
         unsupported: 'Shown as a table ({{display}} not yet supported)',
+        queryFailed: 'Query failed',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -118,6 +119,7 @@ export const resources = {
         noData: '暂无数据',
         showingNofM: '显示 {{shown}} / {{total}}',
         unsupported: '以表格显示（{{display}} 暂不支持）',
+        queryFailed: '查询失败',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',

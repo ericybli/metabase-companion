@@ -15,6 +15,8 @@ const threePoint: QueryResult = {
     { name: 'revenue', displayName: 'Revenue', baseType: 'type/Float', semanticType: null },
   ],
   rowCount: 3,
+  status: 'completed',
+  error: null,
 };
 
 describe('LineChartView', () => {
@@ -31,6 +33,8 @@ describe('LineChartView', () => {
       rows: [['a'], ['b']],
       cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     };
     await render(<LineChartView result={result} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();

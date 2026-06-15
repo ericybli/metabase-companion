@@ -15,6 +15,8 @@ const threePoint: QueryResult = {
     { name: 'sales', displayName: 'Sales', baseType: 'type/Integer', semanticType: null },
   ],
   rowCount: 3,
+  status: 'completed',
+  error: null,
 };
 
 describe('PieChartView', () => {
@@ -29,6 +31,8 @@ describe('PieChartView', () => {
       rows: [['a'], ['b']],
       cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     };
     await render(<PieChartView result={result} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();
@@ -45,6 +49,8 @@ describe('PieChartView', () => {
         { name: 'n', displayName: 'N', baseType: 'type/Integer', semanticType: null },
       ],
       rowCount: 2,
+      status: 'completed',
+      error: null,
     };
     await render(<PieChartView result={result} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();

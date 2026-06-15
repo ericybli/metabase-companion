@@ -121,6 +121,46 @@ describe('QueryResultSchema', () => {
       expect(col.semanticType).toBe('type/Currency');
     }
   });
+
+  it('defaults status to "completed" when status is absent', () => {
+    const result = QueryResultSchema.parse(realisticPayload);
+    expect(result.status).toBe('completed');
+  });
+
+  it('defaults error to null when error is absent', () => {
+    const result = QueryResultSchema.parse(realisticPayload);
+    expect(result.error).toBeNull();
+  });
+
+  it('parses an explicit status field', () => {
+    const result = QueryResultSchema.parse({ ...realisticPayload, status: 'completed' });
+    expect(result.status).toBe('completed');
+  });
+
+  it('parses a failed query payload with status and error', () => {
+    const failedPayload = {
+      data: { rows: [], cols: [] },
+      row_count: 0,
+      status: 'failed',
+      error: 'Database connection error',
+    };
+    const result = QueryResultSchema.parse(failedPayload);
+    expect(result.status).toBe('failed');
+    expect(result.error).toBe('Database connection error');
+    expect(result.rows).toEqual([]);
+  });
+
+  it('parses a failed payload with null error', () => {
+    const failedPayload = {
+      data: { rows: [], cols: [] },
+      row_count: 0,
+      status: 'failed',
+      error: null,
+    };
+    const result = QueryResultSchema.parse(failedPayload);
+    expect(result.status).toBe('failed');
+    expect(result.error).toBeNull();
+  });
 });
 
 describe('DashboardListSchema', () => {
