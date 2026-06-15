@@ -22,9 +22,11 @@ jest.mock('@/store/instances', () => ({
 jest.mock('@/api/instanceClient', () => ({ createInstanceClient: jest.fn(async () => ({})) }));
 const mockGetDashboard = jest.fn();
 const mockRunDashcardQuery = jest.fn();
+const mockGetParameterValues = jest.fn(async (..._a: unknown[]) => [] as string[]);
 jest.mock('@/api/endpoints', () => ({
   getDashboard: (...a: unknown[]) => mockGetDashboard(...a),
   runDashcardQuery: (...a: unknown[]) => mockRunDashcardQuery(...a),
+  getParameterValues: (...a: unknown[]) => mockGetParameterValues(...a),
 }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -246,8 +248,18 @@ describe('DashboardScreen', () => {
           name: 'Date Filter',
           type: 'date/all-options',
           default: 'this-month',
+          values: [],
+          valuesSourceType: '',
         },
-        { id: 'p2', slug: 'status', name: 'Status', type: 'string/=', default: null }, // null default should be excluded
+        {
+          id: 'p2',
+          slug: 'status',
+          name: 'Status',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        }, // null default should be excluded
       ],
     });
     mockRunDashcardQuery.mockResolvedValue({
@@ -446,6 +458,8 @@ describe('DashboardScreen', () => {
           name: 'Status',
           type: 'string/=',
           default: 'active',
+          values: [],
+          valuesSourceType: '',
         },
       ],
     });

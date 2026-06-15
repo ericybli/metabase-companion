@@ -6,6 +6,7 @@ import {
   getDashboard,
   runDashcardQuery,
   runCardQuery,
+  getParameterValues,
 } from './endpoints';
 import type { MetabaseClient } from './client';
 
@@ -220,5 +221,33 @@ describe('endpoints', () => {
       status: 'completed',
       error: null,
     });
+  });
+
+  it('getParameterValues POSTs the values path with an empty body and parses [[v]] -> string[]', async () => {
+    const raw = { values: [['active'], ['inactive'], [7]], has_more_values: false };
+    const post = jest.fn(
+      async (_path: string, _body: unknown, schema: { parse: (v: unknown) => unknown }) =>
+        schema.parse(raw),
+    );
+    const client = { post } as unknown as MetabaseClient;
+
+    const values = await getParameterValues(client, 9, 'abc123');
+
+    expect(post).toHaveBeenCalledWith(
+      '/api/dashboard/9/params/abc123/values',
+      {},
+      expect.anything(),
+    );
+    expect(values).toEqual(['active', 'inactive', '7']);
+  });
+
+  it('getParameterValues tolerates a missing values list', async () => {
+    const post = jest.fn(
+      async (_path: string, _body: unknown, schema: { parse: (v: unknown) => unknown }) =>
+        schema.parse({}),
+    );
+    const client = { post } as unknown as MetabaseClient;
+
+    await expect(getParameterValues(client, 1, 'p')).resolves.toEqual([]);
   });
 });

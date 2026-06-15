@@ -1,8 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { DatePicker } from '@/ui/DatePicker';
+import { Dropdown } from '@/ui/Dropdown';
 import type { DashboardParameter } from '@/api/schemas';
 
 export interface FiltersBarProps {
@@ -11,6 +13,13 @@ export interface FiltersBarProps {
   values: Record<string, unknown>;
   /** Called with the full edited value map (keyed by parameter id) on Apply. */
   onApply: (values: Record<string, unknown>) => void;
+  /**
+   * Lazily fetches the selectable values for a field/card-backed parameter
+   * (called when its dropdown opens). Provided by the dashboard screen, which
+   * has the dashboard id and an instance client. Omitted in contexts without
+   * server access, in which case backed params fall back to a TextInput.
+   */
+  fetchParamValues?: (paramId: string) => Promise<string[]>;
 }
 
 /** Convert an applied value into the string shown in its TextInput / picker. */
@@ -37,6 +46,15 @@ function isDateParam(type: string): boolean {
 }
 
 /**
+ * True when the parameter's options come from a server-backed source (a field
+ * or another card) rather than a static list — i.e. a non-empty source type
+ * that isn't 'static-list'. These are fetched lazily when the dropdown opens.
+ */
+function isBackedSource(valuesSourceType: string): boolean {
+  return valuesSourceType !== '' && valuesSourceType !== 'static-list';
+}
+
+/**
  * A simple, Expo-Go-safe filter bar. A header row ("Filters" + a chevron)
  * toggles between collapsed (header only, with a count of non-empty filters)
  * and expanded (one labeled control per dashboard parameter + an Apply button).
@@ -48,6 +66,7 @@ export function FiltersBar({
   parameters,
   values,
   onApply,
+  fetchParamValues,
 }: FiltersBarProps): React.ReactElement | null {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -108,6 +127,8 @@ export function FiltersBar({
           {parameters.map((p) => {
             const type = p.type ?? '';
             const current = edits[p.id] ?? '';
+            const hasStaticValues = p.values.length > 0;
+            const backed = isBackedSource(p.valuesSourceType) && fetchParamValues != null;
             return (
               <View key={p.id} style={styles.field}>
                 <Text style={[styles.label, { color: theme.colors.text }]}>{p.name ?? ''}</Text>
@@ -116,6 +137,19 @@ export function FiltersBar({
                     value={current !== '' ? current : null}
                     onChange={(iso) => setEdit(p.id, iso)}
                     placeholder={type}
+                  />
+                ) : hasStaticValues ? (
+                  <Dropdown
+                    value={current !== '' ? current : null}
+                    options={p.values}
+                    onChange={(v) => setEdit(p.id, v ?? '')}
+                  />
+                ) : backed && fetchParamValues != null ? (
+                  <BackedDropdown
+                    paramId={p.id}
+                    value={current !== '' ? current : null}
+                    onChange={(v) => setEdit(p.id, v ?? '')}
+                    fetchParamValues={fetchParamValues}
                   />
                 ) : (
                   <TextInput
@@ -154,6 +188,40 @@ export function FiltersBar({
         </>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * A {@link Dropdown} for a field/card-backed parameter. The options are fetched
+ * lazily the first time the dropdown opens (via React Query keyed by paramId),
+ * showing a spinner while in flight. An empty/failed fetch yields no options.
+ */
+function BackedDropdown({
+  paramId,
+  value,
+  onChange,
+  fetchParamValues,
+}: {
+  paramId: string;
+  value: string | null;
+  onChange: (value: string | null) => void;
+  fetchParamValues: (paramId: string) => Promise<string[]>;
+}): React.ReactElement {
+  const [opened, setOpened] = React.useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ['paramValues', paramId],
+    enabled: opened,
+    queryFn: () => fetchParamValues(paramId),
+  });
+
+  return (
+    <Dropdown
+      value={value}
+      options={data ?? []}
+      onChange={onChange}
+      onOpen={() => setOpened(true)}
+      loading={opened && isLoading}
+    />
   );
 }
 

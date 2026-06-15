@@ -123,6 +123,18 @@ export interface DashboardParameter {
   type: string;
   /** The parameter's default value; null when not set. */
   default: unknown;
+  /**
+   * Static list values for a dropdown, taken from
+   * `values_source_config.values` when `values_source_type === 'static-list'`
+   * (each mapped to a string); `[]` otherwise.
+   */
+  values: string[];
+  /**
+   * Raw `values_source_type` ('static-list', 'card', or a field-backed source
+   * like ''); '' when absent. A non-empty, non-'static-list' value means the
+   * options are fetched lazily from the server.
+   */
+  valuesSourceType: string;
 }
 
 export interface DashboardDetail {
@@ -222,17 +234,30 @@ const DashboardParameterSchema = z
     name: z.string().optional(),
     type: z.string().optional(),
     default: z.unknown().optional(),
+    values_source_type: z.string().nullable().optional(),
+    values_source_config: z
+      .object({ values: z.array(z.unknown()).optional() })
+      .passthrough()
+      .nullable()
+      .optional(),
   })
   .passthrough()
-  .transform(
-    (raw): DashboardParameter => ({
+  .transform((raw): DashboardParameter => {
+    const valuesSourceType = raw.values_source_type ?? '';
+    const values =
+      valuesSourceType === 'static-list'
+        ? (raw.values_source_config?.values ?? []).map((v) => String(v))
+        : [];
+    return {
       id: raw.id ?? '',
       slug: raw.slug ?? '',
       name: raw.name ?? raw.slug ?? '',
       type: raw.type ?? '',
       default: raw.default !== undefined ? raw.default : null,
-    }),
-  );
+      values,
+      valuesSourceType,
+    };
+  });
 
 export const DashboardDetailSchema = z
   .object({

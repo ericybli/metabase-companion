@@ -54,6 +54,8 @@ export const resources = {
         filters: 'Filters',
         apply: 'Apply',
         rotate: 'Rotate',
+        select: 'Select…',
+        clear: 'Clear',
       },
       chart: {
         noData: 'No data',
@@ -122,6 +124,8 @@ export const resources = {
         filters: '筛选',
         apply: '应用',
         rotate: '旋转',
+        select: '请选择…',
+        clear: '清除',
       },
       chart: {
         noData: '暂无数据',

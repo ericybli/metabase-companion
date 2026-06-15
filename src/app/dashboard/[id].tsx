@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { ApiException } from '@/api/errors';
 import { createInstanceClient } from '@/api/instanceClient';
-import { getDashboard, runDashcardQuery } from '@/api/endpoints';
+import { getDashboard, getParameterValues, runDashcardQuery } from '@/api/endpoints';
 import type { DashboardCard, DashboardParameter, DashboardTab } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
@@ -86,6 +86,18 @@ export default function DashboardScreen() {
 
   const cardParams = React.useMemo(() => toCardParams(paramValues), [paramValues]);
 
+  // Lazily fetch selectable values for a field/card-backed parameter (used by
+  // the FiltersBar dropdowns). Builds an instance client per call, mirroring the
+  // dashboard/dashcard queries above.
+  const fetchParamValues = React.useCallback(
+    async (paramId: string): Promise<string[]> => {
+      if (!instanceId) return [];
+      const client = await createInstanceClient(instanceId);
+      return getParameterValues(client, dashboardId, paramId);
+    },
+    [instanceId, dashboardId],
+  );
+
   const tabs: DashboardTab[] = React.useMemo(() => data?.tabs ?? [], [data?.tabs]);
   // When tabs first load, default-select the first one.
   const effectiveTabId = tabs.length > 0 ? (selectedTabId ?? tabs[0]?.id ?? null) : null;
@@ -114,7 +126,12 @@ export default function DashboardScreen() {
         <View style={{ width: 48 }} />
       </View>
 
-      <FiltersBar parameters={parameters} values={paramValues} onApply={setParamValues} />
+      <FiltersBar
+        parameters={parameters}
+        values={paramValues}
+        onApply={setParamValues}
+        fetchParamValues={fetchParamValues}
+      />
 
       {tabs.length > 0 && (
         <ScrollView

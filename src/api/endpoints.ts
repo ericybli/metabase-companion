@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { MetabaseClient } from './client';
 import {
   CurrentUserSchema,
@@ -11,6 +12,16 @@ import {
   type QueryResult,
   type SessionProperties,
 } from './schemas';
+
+/**
+ * Defensive shape for POST .../params/:paramId/values. Metabase returns
+ * `{ values: [[value, ...], ...] }` (each inner array's first element is the
+ * actual value). Tolerates extra keys and a missing/empty list.
+ */
+const ParameterValuesSchema = z
+  .object({ values: z.array(z.array(z.unknown())).optional() })
+  .passthrough()
+  .transform((raw): string[] => (raw.values ?? []).map((v) => String(v[0])));
 
 /** GET /api/user/current — validates the active session and returns the user. */
 export function getCurrentUser(client: MetabaseClient): Promise<CurrentUser> {
@@ -66,4 +77,21 @@ export function runDashcardQuery(
  */
 export function runCardQuery(client: MetabaseClient, cardId: number): Promise<QueryResult> {
   return client.post(`/api/card/${cardId}/query`, {}, QueryResultSchema);
+}
+
+/**
+ * POST /api/dashboard/:dashboardId/params/:paramId/values
+ * Fetches the selectable values for a field/card-backed dashboard parameter
+ * (used to populate a dropdown). Returns each value's first element as a string.
+ */
+export function getParameterValues(
+  client: MetabaseClient,
+  dashboardId: number,
+  paramId: string,
+): Promise<string[]> {
+  return client.post(
+    `/api/dashboard/${dashboardId}/params/${paramId}/values`,
+    {},
+    ParameterValuesSchema,
+  );
 }

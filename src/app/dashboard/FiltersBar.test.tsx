@@ -1,11 +1,26 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/ui/i18n';
 import type { DashboardParameter } from '@/api/schemas';
 import { FiltersBar } from './FiltersBar';
 
 function param(over: Partial<DashboardParameter>): DashboardParameter {
-  return { id: 'p', slug: 'p', name: 'P', type: 'string/=', default: null, ...over };
+  return {
+    id: 'p',
+    slug: 'p',
+    name: 'P',
+    type: 'string/=',
+    default: null,
+    values: [],
+    valuesSourceType: '',
+    ...over,
+  };
+}
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
 describe('FiltersBar', () => {
@@ -116,6 +131,85 @@ describe('FiltersBar', () => {
       fireEvent.press(screen.getByText('Apply'));
 
       expect(onApply).toHaveBeenCalledWith({ p1: '2024-03-20' });
+    });
+  });
+
+  describe('dropdown params', () => {
+    it('renders a Dropdown (not a TextInput) for a static-values param', async () => {
+      const onApply = jest.fn();
+      const parameters = [
+        param({
+          id: 'p1',
+          name: 'Status',
+          type: 'category',
+          values: ['active', 'inactive'],
+          valuesSourceType: 'static-list',
+        }),
+      ];
+      await render(<FiltersBar parameters={parameters} values={{}} onApply={onApply} />, {
+        wrapper,
+      });
+
+      // No text input for the param (no placeholder of the param type).
+      expect(screen.queryByPlaceholderText('category')).toBeNull();
+      // The dropdown trigger shows the localized placeholder.
+      expect(screen.getByText('Select…')).toBeTruthy();
+    });
+
+    it('selecting a static option is committed on Apply', async () => {
+      const onApply = jest.fn();
+      const parameters = [
+        param({
+          id: 'p1',
+          name: 'Status',
+          type: 'category',
+          values: ['active', 'inactive'],
+          valuesSourceType: 'static-list',
+        }),
+      ];
+      await render(<FiltersBar parameters={parameters} values={{}} onApply={onApply} />, {
+        wrapper,
+      });
+
+      fireEvent.press(screen.getByText('Select…'));
+      fireEvent.press(screen.getByText('inactive'));
+      fireEvent.press(screen.getByText('Apply'));
+
+      expect(onApply).toHaveBeenCalledWith({ p1: 'inactive' });
+    });
+
+    it('fetches backed values lazily on open via fetchParamValues', async () => {
+      const onApply = jest.fn();
+      const fetchParamValues = jest.fn(async () => ['north', 'south']);
+      const parameters = [
+        param({ id: 'p1', name: 'Region', type: 'category', valuesSourceType: 'card' }),
+      ];
+      await render(
+        <FiltersBar
+          parameters={parameters}
+          values={{}}
+          onApply={onApply}
+          fetchParamValues={fetchParamValues}
+        />,
+        { wrapper },
+      );
+
+      // Not fetched until the dropdown opens.
+      expect(fetchParamValues).not.toHaveBeenCalled();
+
+      fireEvent.press(screen.getByText('Select…'));
+      await waitFor(() => expect(fetchParamValues).toHaveBeenCalledWith('p1'));
+      await waitFor(() => expect(screen.getByText('north')).toBeTruthy());
+    });
+
+    it('falls back to a TextInput for a backed param with no fetcher', async () => {
+      const parameters = [
+        param({ id: 'p1', name: 'Region', type: 'category', valuesSourceType: 'card' }),
+      ];
+      await render(<FiltersBar parameters={parameters} values={{}} onApply={jest.fn()} />, {
+        wrapper,
+      });
+      expect(screen.getByPlaceholderText('category')).toBeTruthy();
     });
   });
 });

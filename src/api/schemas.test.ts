@@ -304,9 +304,70 @@ describe('DashboardDetailSchema', () => {
         name: 'Date Filter',
         type: 'date/all-options',
         default: 'this-month',
+        values: [],
+        valuesSourceType: '',
       },
-      { id: 'def', slug: 'status', name: 'Status', type: 'string/=', default: 'active' },
+      {
+        id: 'def',
+        slug: 'status',
+        name: 'Status',
+        type: 'string/=',
+        default: 'active',
+        values: [],
+        valuesSourceType: '',
+      },
     ]);
+  });
+
+  it('parses static-list values into a string[] and records the source type', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [
+        {
+          id: 'abc',
+          slug: 'status',
+          name: 'Status',
+          type: 'category',
+          values_source_type: 'static-list',
+          values_source_config: { values: ['active', 'inactive', 7] },
+        },
+      ],
+    });
+    expect(result.parameters[0]?.values).toEqual(['active', 'inactive', '7']);
+    expect(result.parameters[0]?.valuesSourceType).toBe('static-list');
+  });
+
+  it('records a field/card-backed source type but leaves values empty', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [
+        {
+          id: 'abc',
+          slug: 'category',
+          name: 'Category',
+          type: 'category',
+          values_source_type: 'card',
+          values_source_config: { card_id: 12, value_field: ['field', 1, null] },
+        },
+      ],
+    });
+    expect(result.parameters[0]?.values).toEqual([]);
+    expect(result.parameters[0]?.valuesSourceType).toBe('card');
+  });
+
+  it('defaults values to [] and valuesSourceType to "" when absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'abc', slug: 'foo' }],
+    });
+    expect(result.parameters[0]?.values).toEqual([]);
+    expect(result.parameters[0]?.valuesSourceType).toBe('');
   });
 
   it('falls back parameter name to slug when name is absent', () => {
