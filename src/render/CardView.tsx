@@ -10,6 +10,8 @@ import { AreaChartView } from '@/render/renderers/AreaChartView';
 import { ComboChartView } from '@/render/renderers/ComboChartView';
 import { RowChartView } from '@/render/renderers/RowChartView';
 import { PieChartView } from '@/render/renderers/PieChartView';
+import { ScatterChartView } from '@/render/renderers/ScatterChartView';
+import { WaterfallChartView } from '@/render/renderers/WaterfallChartView';
 import type { QueryResult } from '@/api/schemas';
 
 export interface CardViewProps {
@@ -30,9 +32,11 @@ export interface CardViewProps {
  *   scalar/smartscalar -> ScalarView, table/pivot -> TableView,
  *   bar -> BarChartView, row -> RowChartView (horizontal bars),
  *   line -> LineChartView, area -> AreaChartView, combo -> ComboChartView
- *   (mixed bar + line), pie -> PieChartView. Any unknown display falls back to
- *   TableView (we always have the rows) prefixed by a small note that explains
- *   the substitution.
+ *   (mixed bar + line), pie -> PieChartView, scatter -> ScatterChartView
+ *   (numeric x/y, optional bubble size), waterfall -> WaterfallChartView
+ *   (running-total floating bars). Any unknown display falls back to TableView
+ *   (we always have the rows) prefixed by a small note that explains the
+ *   substitution.
  *
  * If the result carries an error or a non-completed status, renders a themed
  * error message instead of a chart or "No data".
@@ -76,6 +80,10 @@ export function CardView({
       return <ComboChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'pie':
       return <PieChartView result={result} vizSettings={vizSettings} height={height} />;
+    case 'scatter':
+      return <ScatterChartView result={result} vizSettings={vizSettings} height={height} />;
+    case 'waterfall':
+      return <WaterfallChartView result={result} vizSettings={vizSettings} height={height} />;
     default:
       return <UnsupportedTable display={display} result={result} />;
   }

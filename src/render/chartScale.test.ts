@@ -18,6 +18,7 @@ import {
   pointsToString,
   resolveSeriesColor,
   truncateLabel,
+  valueToXRange,
   valueToY,
   valueToYRange,
   yAxisTicks,
@@ -116,6 +117,24 @@ describe('valueToYRange', () => {
     const plot = getPlotArea(320, 220);
     // 0 sits midway up a symmetric [-10, 10] domain.
     expect(valueToYRange(0, -10, 10, plot)).toBeCloseTo((plot.innerTop + plot.innerBottom) / 2);
+  });
+});
+
+describe('valueToXRange', () => {
+  it('maps min to the left edge and max to the right edge', () => {
+    const plot = getPlotArea(320, 220);
+    expect(valueToXRange(0, 0, 10, plot)).toBeCloseTo(plot.innerLeft);
+    expect(valueToXRange(10, 0, 10, plot)).toBeCloseTo(plot.innerRight);
+  });
+
+  it('places a midpoint value at the horizontal center', () => {
+    const plot = getPlotArea(320, 220);
+    expect(valueToXRange(5, 0, 10, plot)).toBeCloseTo((plot.innerLeft + plot.innerRight) / 2);
+  });
+
+  it('handles a degenerate domain without dividing by zero', () => {
+    const plot = getPlotArea(320, 220);
+    expect(Number.isFinite(valueToXRange(5, 5, 5, plot))).toBe(true);
   });
 });
 

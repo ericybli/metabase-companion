@@ -174,6 +174,20 @@ export function valueToYRange(value: number, min: number, max: number, plot: Plo
   return plot.innerBottom - ratio * plot.innerHeight;
 }
 
+/**
+ * Map a data value to an x pixel within a plot area spanning an explicit
+ * [min, max] domain. `min` maps to the left edge (innerLeft), `max` maps to the
+ * right edge (innerRight). Used by the NUMERIC-x charts (scatter) so a point's
+ * horizontal position reflects its x value rather than a category slot.
+ */
+export function valueToXRange(value: number, min: number, max: number, plot: PlotArea): number {
+  const span = max - min;
+  const safeSpan = span !== 0 ? span : 1;
+  const clamped = Number.isFinite(value) ? value : min;
+  const ratio = (clamped - min) / safeSpan;
+  return plot.innerLeft + ratio * plot.innerWidth;
+}
+
 export interface BarGeometry {
   x: number;
   y: number;

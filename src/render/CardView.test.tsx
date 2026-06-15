@@ -93,6 +93,31 @@ describe('CardView registry', () => {
     expect(screen.getByText('Feb')).toBeTruthy();
   });
 
+  it('routes scatter to ScatterChartView (numeric x/y, shows the metric title)', async () => {
+    const xyResult: QueryResult = {
+      rows: [
+        [1, 10],
+        [2, 20],
+      ],
+      cols: [
+        { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null },
+        { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(<CardView display="scatter" result={xyResult} vizSettings={{}} name="Scatter" />);
+    expect(screen.getByText('Y')).toBeTruthy();
+  });
+
+  it('routes waterfall to WaterfallChartView (shows the measure title)', async () => {
+    await render(
+      <CardView display="waterfall" result={seriesResult} vizSettings={{}} name="Flow" />,
+    );
+    expect(screen.getByText('Total')).toBeTruthy();
+  });
+
   it('forwards a custom height to the chart renderer', async () => {
     const { UNSAFE_getAllByType } = await render(
       <CardView display="line" result={seriesResult} vizSettings={{}} name="Sales" height={500} />,
@@ -132,7 +157,7 @@ describe('CardView registry', () => {
     error: null,
   };
 
-  it.each(['bar', 'row', 'line', 'area', 'combo', 'pie'])(
+  it.each(['bar', 'row', 'line', 'area', 'combo', 'pie', 'scatter', 'waterfall'])(
     'renders %s with empty rows without throwing and shows the no-data message',
     async (display) => {
       // Rendering must not throw on empty data.

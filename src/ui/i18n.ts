@@ -65,6 +65,9 @@ export const resources = {
         queryFailed: 'Query failed',
         legendHide: 'Hide {{name}} series',
         legendShow: 'Show {{name}} series',
+        waterfallStep: 'Step',
+        waterfallCumulative: 'Total so far',
+        waterfallTotal: 'Total',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -136,6 +139,9 @@ export const resources = {
         queryFailed: '查询失败',
         legendHide: '隐藏{{name}}系列',
         legendShow: '显示{{name}}系列',
+        waterfallStep: '本步',
+        waterfallCumulative: '累计',
+        waterfallTotal: '合计',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',
