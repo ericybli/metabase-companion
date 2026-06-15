@@ -1,7 +1,24 @@
 import * as SecureStore from 'expo-secure-store';
 
-const tokenKey = (instanceId: string): string => `mb_token_${instanceId}`;
-const credsKey = (instanceId: string): string => `mb_creds_${instanceId}`;
+// SecureStore keys may only contain alphanumerics, ".", "-", and "_". Instance ids
+// are base URLs (e.g. "https://metabase.example.com"), which contain ":" and "/", so
+// we must derive a safe key. We sanitize the id for readability and append a short
+// stable hash so two ids that sanitize to the same string never collide.
+function stableHash(input: string): string {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = (((hash << 5) + hash + input.charCodeAt(i)) & 0xffffffff) >>> 0; // djb2
+  }
+  return hash.toString(36);
+}
+
+function scopedKey(prefix: string, instanceId: string): string {
+  const sanitized = instanceId.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 96);
+  return `${prefix}_${sanitized}_${stableHash(instanceId)}`;
+}
+
+const tokenKey = (instanceId: string): string => scopedKey('mb_token', instanceId);
+const credsKey = (instanceId: string): string => scopedKey('mb_creds', instanceId);
 
 export async function saveToken(instanceId: string, token: string): Promise<void> {
   await SecureStore.setItemAsync(tokenKey(instanceId), token);
