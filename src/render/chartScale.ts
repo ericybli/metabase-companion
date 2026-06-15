@@ -276,11 +276,45 @@ function arcPath(
 }
 
 /** Truncate an axis label to `max` chars, appending an ellipsis when clipped. */
-export function truncateLabel(label: string, max = 6): string {
+export function truncateLabel(label: string, max = 8): string {
   if (label.length <= max) {
     return label;
   }
   return label.slice(0, Math.max(1, max - 1)) + '…';
+}
+
+/** Default cap on how many x-axis tick labels we draw at once. */
+export const MAX_AXIS_LABELS = 6;
+
+/**
+ * Pick which data indices should get an x-axis label so the labels never
+ * overlap. We always keep the first and last index and spread the rest evenly
+ * across the range, capping the total at `max` (default {@link MAX_AXIS_LABELS}).
+ *
+ * Examples:
+ *  - pickAxisLabelIndices(3)  -> [0, 1, 2]      (everything fits)
+ *  - pickAxisLabelIndices(12) -> [0, 2, 4, 7, 9, 11]
+ *
+ * The result is sorted, de-duplicated, and always within `[0, count - 1]`.
+ */
+export function pickAxisLabelIndices(count: number, max: number = MAX_AXIS_LABELS): number[] {
+  if (count <= 0) {
+    return [];
+  }
+  if (count === 1) {
+    return [0];
+  }
+  const cap = Math.max(2, Math.floor(max));
+  if (count <= cap) {
+    return Array.from({ length: count }, (_, i) => i);
+  }
+  // Evenly spaced positions across [0, count - 1], including both endpoints.
+  const last = count - 1;
+  const picked = new Set<number>();
+  for (let i = 0; i < cap; i++) {
+    picked.add(Math.round((i * last) / (cap - 1)));
+  }
+  return Array.from(picked).sort((a, b) => a - b);
 }
 
 /**

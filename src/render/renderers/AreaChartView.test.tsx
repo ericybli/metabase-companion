@@ -1,8 +1,22 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { Text as SvgText } from 'react-native-svg';
 import '@/ui/i18n';
 import { AreaChartView } from './AreaChartView';
 import type { QueryResult } from '@/api/schemas';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const twelvePoint: QueryResult = {
+  rows: MONTHS.map((m, i) => [m, i + 1]),
+  cols: [
+    { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+    { name: 'visits', displayName: 'Visits', baseType: 'type/Integer', semanticType: null },
+  ],
+  rowCount: 12,
+  status: 'completed',
+  error: null,
+};
 
 const threePoint: QueryResult = {
   rows: [
@@ -26,6 +40,20 @@ describe('AreaChartView', () => {
     expect(screen.getByText('Visits')).toBeTruthy();
     // The filled area path + line render inside the SVG without throwing.
     expect(UNSAFE_root).toBeTruthy();
+  });
+
+  it('thins x-axis labels with many points, keeping the first and last', async () => {
+    const { UNSAFE_getAllByType } = await render(
+      <AreaChartView result={twelvePoint} vizSettings={{}} />,
+    );
+    const labels = UNSAFE_getAllByType(SvgText);
+    // 12 points, but at most 6 labels so they don't overlap.
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.length).toBeLessThanOrEqual(6);
+    // First and last categories are always labeled.
+    const texts = labels.map((node) => node.props.children);
+    expect(texts).toContain('Jan');
+    expect(texts).toContain('Dec');
   });
 
   it('shows no-data when there is no numeric metric column', async () => {

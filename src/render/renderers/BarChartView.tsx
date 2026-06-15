@@ -9,6 +9,7 @@ import {
   DEFAULT_CHART_WIDTH,
   getBarGeometry,
   getPlotArea,
+  pickAxisLabelIndices,
   resolveSeriesColor,
   truncateLabel,
 } from '@/render/chartScale';
@@ -49,6 +50,8 @@ export function BarChartView({ result, vizSettings }: BarChartViewProps): React.
   const plot = getPlotArea(width, CHART_HEIGHT);
   const bars = getBarGeometry(series.values, plot);
   const color = resolveSeriesColor(vizSettings, series.metricName, theme.colors.primary);
+  // Thin out the x-axis labels so they don't overlap; bars stay one-per-value.
+  const labelIndices = pickAxisLabelIndices(bars.length);
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -75,12 +78,12 @@ export function BarChartView({ result, vizSettings }: BarChartViewProps): React.
             fill={color}
           />
         ))}
-        {bars.map((bar, i) => (
+        {labelIndices.map((i) => (
           <SvgText
             key={`label-${i}`}
-            x={bar.centerX}
+            x={bars[i]?.centerX ?? plot.innerLeft}
             y={plot.innerBottom + 16}
-            fontSize={10}
+            fontSize={9}
             fill={theme.colors.textMuted}
             textAnchor="middle"
           >

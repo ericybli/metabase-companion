@@ -9,6 +9,7 @@ import {
   DEFAULT_CHART_WIDTH,
   getLinePoints,
   getPlotArea,
+  pickAxisLabelIndices,
   pointsToString,
   resolveSeriesColor,
   truncateLabel,
@@ -50,6 +51,8 @@ export function LineChartView({ result, vizSettings }: LineChartViewProps): Reac
   const plot = getPlotArea(width, CHART_HEIGHT);
   const points = getLinePoints(series.values, plot);
   const color = resolveSeriesColor(vizSettings, series.metricName, theme.colors.primary);
+  // Thin out the x-axis labels so they don't overlap; points stay one-per-value.
+  const labelIndices = pickAxisLabelIndices(points.length);
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -78,12 +81,12 @@ export function LineChartView({ result, vizSettings }: LineChartViewProps): Reac
         {points.map((p, i) => (
           <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={3} fill={color} />
         ))}
-        {points.map((p, i) => (
+        {labelIndices.map((i) => (
           <SvgText
             key={`label-${i}`}
-            x={p.x}
+            x={points[i]?.x ?? plot.innerLeft}
             y={plot.innerBottom + 16}
-            fontSize={10}
+            fontSize={9}
             fill={theme.colors.textMuted}
             textAnchor="middle"
           >

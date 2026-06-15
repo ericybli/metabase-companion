@@ -6,12 +6,14 @@ import {
   getPieSlices,
   getPlotArea,
   paletteColor,
+  pickAxisLabelIndices,
   pointsToString,
   resolveSeriesColor,
   truncateLabel,
   valueToY,
   CHART_HEIGHT,
   DEFAULT_CHART_WIDTH,
+  MAX_AXIS_LABELS,
 } from './chartScale';
 
 describe('getPlotArea', () => {
@@ -151,6 +153,45 @@ describe('truncateLabel', () => {
     const out = truncateLabel('September', 6);
     expect(out.endsWith('…')).toBe(true);
     expect(out.length).toBe(6);
+  });
+
+  it('defaults to an ~8 char cap', () => {
+    expect(truncateLabel('2026-06-15')).toBe('2026-06…');
+    expect(truncateLabel('2026-06-15').length).toBe(8);
+  });
+});
+
+describe('pickAxisLabelIndices', () => {
+  it('keeps every index when they all fit under the cap', () => {
+    expect(pickAxisLabelIndices(3)).toEqual([0, 1, 2]);
+    expect(pickAxisLabelIndices(MAX_AXIS_LABELS)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  it('thins many points to at most the cap, keeping first and last', () => {
+    const picked = pickAxisLabelIndices(12);
+    expect(picked.length).toBeLessThanOrEqual(MAX_AXIS_LABELS);
+    expect(picked[0]).toBe(0);
+    expect(picked[picked.length - 1]).toBe(11);
+    // Sorted, unique, in range.
+    const sorted = [...picked].sort((a, b) => a - b);
+    expect(picked).toEqual(sorted);
+    expect(new Set(picked).size).toBe(picked.length);
+    picked.forEach((i) => {
+      expect(i).toBeGreaterThanOrEqual(0);
+      expect(i).toBeLessThanOrEqual(11);
+    });
+  });
+
+  it('respects a custom max', () => {
+    const picked = pickAxisLabelIndices(20, 4);
+    expect(picked.length).toBeLessThanOrEqual(4);
+    expect(picked[0]).toBe(0);
+    expect(picked[picked.length - 1]).toBe(19);
+  });
+
+  it('handles empty and single-point inputs', () => {
+    expect(pickAxisLabelIndices(0)).toEqual([]);
+    expect(pickAxisLabelIndices(1)).toEqual([0]);
   });
 });
 
