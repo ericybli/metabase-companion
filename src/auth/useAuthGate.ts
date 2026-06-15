@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useInstancesStore } from '@/store/instances';
 import { usePreferencesStore } from '@/store/preferences';
 import { useAuthRevisionStore } from '@/store/authRevision';
+import { useSessionLockStore } from '@/store/sessionLock';
 import { getToken } from '@/auth/secureStore';
 import { isBiometricAvailable } from '@/auth/biometrics';
 
@@ -34,10 +35,10 @@ export function useAuthGate(): AuthGate {
   const activeInstanceId = useInstancesStore((s) => s.activeInstanceId);
   const rememberCredentials = usePreferencesStore((s) => s.rememberCredentials);
   const authRevision = useAuthRevisionStore((s) => s.revision);
+  const unlocked = useSessionLockStore((s) => s.unlocked);
   const [ready, setReady] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [biometricRequired, setBiometricRequired] = useState(false);
-  const [unlockedThisSession, setUnlockedThisSession] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,14 +56,14 @@ export function useAuthGate(): AuthGate {
       const biometric = token ? await isBiometricAvailable() : false;
       if (cancelled) return;
       setHasToken(!!token);
-      setBiometricRequired(!!token && biometric && rememberCredentials && !unlockedThisSession);
+      setBiometricRequired(!!token && biometric && rememberCredentials && !unlocked);
       setReady(true);
     }
     void resolve();
     return () => {
       cancelled = true;
     };
-  }, [activeInstanceId, rememberCredentials, unlockedThisSession, authRevision]);
+  }, [activeInstanceId, rememberCredentials, unlocked, authRevision]);
 
   return {
     ready,
@@ -71,6 +72,6 @@ export function useAuthGate(): AuthGate {
       hasToken,
       biometricRequired,
     }),
-    markUnlocked: () => setUnlockedThisSession(true),
+    markUnlocked: () => useSessionLockStore.getState().setUnlocked(true),
   };
 }

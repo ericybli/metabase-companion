@@ -1,6 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { decideRoute, useAuthGate } from './useAuthGate';
 import { useAuthRevisionStore } from '@/store/authRevision';
+import { useSessionLockStore } from '@/store/sessionLock';
 
 // Controlled values for the hook's dependencies (must be `mock`-prefixed for jest hoisting).
 let mockActiveInstanceId: string | null = null;
@@ -62,6 +63,7 @@ describe('useAuthGate effect', () => {
     mockGetToken.mockReset().mockResolvedValue(null);
     mockIsBiometricAvailable.mockReset().mockResolvedValue(false);
     useAuthRevisionStore.setState({ revision: 0 });
+    useSessionLockStore.setState({ unlocked: false });
   });
 
   it('no active instance -> ready at /setup without reading a token', async () => {

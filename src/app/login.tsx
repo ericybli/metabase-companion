@@ -17,6 +17,7 @@ import { saveCredentials, saveToken } from '@/auth/secureStore';
 import { useInstancesStore } from '@/store/instances';
 import { usePreferencesStore } from '@/store/preferences';
 import { useAuthRevisionStore } from '@/store/authRevision';
+import { useSessionLockStore } from '@/store/sessionLock';
 import { getSessionProps, setSessionProps } from '@/auth/sessionPropsCache';
 import type { Theme } from '@/ui/theme';
 
@@ -35,6 +36,7 @@ export default function LoginScreen() {
     (s: { setRememberCredentials: (v: boolean) => void }) => s.setRememberCredentials,
   );
   const bumpAuthRevision = useAuthRevisionStore((s) => s.bumpAuthRevision);
+  const setUnlocked = useSessionLockStore((s) => s.setUnlocked);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +75,7 @@ export default function LoginScreen() {
       if (rememberCredentials) {
         await saveCredentials(instanceId, email, password);
       }
+      setUnlocked(true); // just authenticated — don't immediately re-prompt for biometrics
       bumpAuthRevision();
       router.replace('/(tabs)');
     } catch (e) {
@@ -90,6 +93,7 @@ export default function LoginScreen() {
     try {
       const token = await loginWithGoogle(instanceId, googleClientId);
       await saveToken(instanceId, token);
+      setUnlocked(true); // just authenticated — don't immediately re-prompt for biometrics
       bumpAuthRevision();
       router.replace('/(tabs)');
     } catch {

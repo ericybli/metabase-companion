@@ -6,6 +6,7 @@ import { useTheme } from '@/ui/ThemeProvider';
 import { authenticate } from '@/auth/biometrics';
 import { deleteToken } from '@/auth/secureStore';
 import { useInstancesStore } from '@/store/instances';
+import { useSessionLockStore } from '@/store/sessionLock';
 
 export default function UnlockScreen() {
   const theme = useTheme();
@@ -17,6 +18,7 @@ export default function UnlockScreen() {
   const setActiveInstance = useInstancesStore(
     (s: { setActiveInstance: (id: string | null) => void }) => s.setActiveInstance,
   );
+  const setUnlocked = useSessionLockStore((s) => s.setUnlocked);
 
   const [status, setStatus] = useState<'pending' | 'failed'>('pending');
 
@@ -28,6 +30,7 @@ export default function UnlockScreen() {
       const ok = await authenticate(t('unlock.prompt'));
       if (cancelled) return;
       if (ok) {
+        setUnlocked(true);
         router.replace('/(tabs)');
       } else {
         setStatus('failed');
@@ -44,6 +47,7 @@ export default function UnlockScreen() {
     setStatus('pending');
     const ok = await authenticate(t('unlock.prompt'));
     if (ok) {
+      setUnlocked(true);
       router.replace('/(tabs)');
     } else {
       setStatus('failed');
@@ -55,6 +59,7 @@ export default function UnlockScreen() {
       await deleteToken(instanceId);
     }
     setActiveInstance(null);
+    setUnlocked(false);
     router.replace('/login');
   }
 

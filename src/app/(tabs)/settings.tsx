@@ -9,6 +9,7 @@ import { deleteCredentials, deleteToken, getToken } from '@/auth/secureStore';
 import { useInstancesStore } from '@/store/instances';
 import { usePreferencesStore } from '@/store/preferences';
 import { useAuthRevisionStore } from '@/store/authRevision';
+import { useSessionLockStore } from '@/store/sessionLock';
 import { changeLanguage } from '@/ui/i18n';
 
 type ThemeMode = 'system' | 'light' | 'dark';
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const locale = usePreferencesStore((s: { locale: Locale }) => s.locale);
   const setLocale = usePreferencesStore((s: { setLocale: (l: Locale) => void }) => s.setLocale);
   const bumpAuthRevision = useAuthRevisionStore((s) => s.bumpAuthRevision);
+  const setUnlocked = useSessionLockStore((s) => s.setUnlocked);
 
   async function onLogout() {
     if (instanceId) {
@@ -53,6 +55,7 @@ export default function SettingsScreen() {
       await deleteCredentials(instanceId);
     }
     setActiveInstance(null);
+    setUnlocked(false);
     bumpAuthRevision();
     router.replace('/login');
   }
