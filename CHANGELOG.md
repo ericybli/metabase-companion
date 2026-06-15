@@ -17,8 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (conditional) Google sign-in; session token stored in the OS secure keystore with biometric
   unlock; persisted instances + preferences stores; theming (light/dark) and i18n (en/zh);
   Expo Router screens (setup, login, unlock, tabs: home + settings) with an auth-gating root layout.
-- **M1 (in progress)** — Home now lists your dashboards (pull-to-refresh, loading/empty/error states);
-  tapping one opens a dashboard view listing its cards. Native chart rendering is the next step.
+- **M1 (in progress)** — Home lists your dashboards (pull-to-refresh, loading/empty/error states);
+  tapping one opens a dashboard view that **renders each card's real data natively**: big-number
+  scalars, tables, and bar / line / area / pie charts — drawn with `react-native-svg` so they work in
+  Expo Go (no Skia/Victory dev build needed). Unsupported chart types fall back to a data table.
   Disabled Expo Router `typedRoutes` (too much friction with dynamic routes).
 
 ### Notes
