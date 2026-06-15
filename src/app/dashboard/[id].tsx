@@ -7,9 +7,10 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { ApiException } from '@/api/errors';
 import { createInstanceClient } from '@/api/instanceClient';
-import { getDashboard } from '@/api/endpoints';
+import { getDashboard, runDashcardQuery } from '@/api/endpoints';
 import type { DashboardCard } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
+import { CardView } from '@/render/CardView';
 
 export default function DashboardScreen() {
   const theme = useTheme();
@@ -63,32 +64,73 @@ export default function DashboardScreen() {
               {t('dashboard.empty')}
             </Text>
           }
-          ListFooterComponent={
-            (data?.cards.length ?? 0) > 0 ? (
-              <Text style={{ color: theme.colors.textMuted, textAlign: 'center', marginTop: 16 }}>
-                {t('dashboard.chartsComingSoon')}
-              </Text>
-            ) : null
-          }
           renderItem={({ item }: { item: DashboardCard }) => (
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                  borderRadius: theme.radius.md,
-                },
-              ]}
-            >
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{item.name}</Text>
-              <Text style={{ color: theme.colors.textMuted, marginTop: 4, fontSize: 12 }}>
-                {item.display ?? 'card'}
-              </Text>
-            </View>
+            <DashcardItem dashboardId={dashboardId} card={item} />
           )}
         />
       )}
+    </View>
+  );
+}
+
+/**
+ * A single dashboard card: its own query for the card's data plus a titled
+ * container that shows a spinner while loading, a themed error with the
+ * ApiException kind on failure, or the routed <CardView> on success.
+ *
+ * Rendered as a component (not inline in FlatList's renderItem) so that its
+ * useQuery hook is called from a stable component, not conditionally.
+ */
+function DashcardItem({
+  dashboardId,
+  card,
+}: {
+  dashboardId: number;
+  card: DashboardCard;
+}): React.ReactElement {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const instanceId = useInstancesStore(
+    (s: { activeInstanceId: string | null }) => s.activeInstanceId,
+  );
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: [instanceId, 'dashcard', dashboardId, card.dashcardId],
+    enabled: !!instanceId && Number.isFinite(dashboardId),
+    queryFn: async () => {
+      const client = await createInstanceClient(instanceId as string);
+      return runDashcardQuery(client, dashboardId, card.dashcardId, card.cardId);
+    },
+  });
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radius.md,
+        },
+      ]}
+    >
+      <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{card.name}</Text>
+      <View style={styles.cardBody}>
+        {isLoading ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : error ? (
+          <Text style={{ color: theme.colors.danger }}>
+            {t('errors.generic')} ({error instanceof ApiException ? error.error.kind : 'unknown'})
+          </Text>
+        ) : data ? (
+          <CardView
+            display={card.display ?? 'table'}
+            result={data}
+            vizSettings={card.vizSettings}
+            name={card.name}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -106,4 +148,5 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { padding: 16, borderWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600' },
+  cardBody: { marginTop: 12 },
 });

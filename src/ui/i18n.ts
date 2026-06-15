@@ -51,11 +51,11 @@ export const resources = {
       dashboard: {
         back: 'Back',
         empty: 'This dashboard has no cards.',
-        chartsComingSoon: 'Chart rendering is coming soon.',
       },
       chart: {
         noData: 'No data',
         showingNofM: 'Showing {{shown}} of {{total}}',
+        unsupported: 'Shown as a table ({{display}} not yet supported)',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -113,11 +113,11 @@ export const resources = {
       dashboard: {
         back: '返回',
         empty: '该仪表盘没有卡片。',
-        chartsComingSoon: '图表渲染即将上线。',
       },
       chart: {
         noData: '暂无数据',
         showingNofM: '显示 {{shown}} / {{total}}',
+        unsupported: '以表格显示（{{display}} 暂不支持）',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',

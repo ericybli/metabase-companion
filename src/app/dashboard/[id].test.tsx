@@ -17,8 +17,10 @@ jest.mock('@/store/instances', () => ({
 }));
 jest.mock('@/api/instanceClient', () => ({ createInstanceClient: jest.fn(async () => ({})) }));
 const mockGetDashboard = jest.fn();
+const mockRunDashcardQuery = jest.fn();
 jest.mock('@/api/endpoints', () => ({
   getDashboard: (...a: unknown[]) => mockGetDashboard(...a),
+  runDashcardQuery: (...a: unknown[]) => mockRunDashcardQuery(...a),
 }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -27,21 +29,59 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('DashboardScreen', () => {
-  beforeEach(() => mockGetDashboard.mockReset());
+  beforeEach(() => {
+    mockGetDashboard.mockReset();
+    mockRunDashcardQuery.mockReset();
+  });
 
-  it('renders the dashboard name and its cards', async () => {
+  it('renders the dashboard name, its cards, and each card data', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,
       name: 'Sales',
       description: null,
       cards: [
-        { dashcardId: 1, cardId: 5, name: 'Revenue', display: 'line' },
-        { dashcardId: 2, cardId: 6, name: 'Orders', display: 'bar' },
+        { dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} },
+        { dashcardId: 2, cardId: 6, name: 'Orders', display: 'table', vizSettings: {} },
       ],
     });
+    mockRunDashcardQuery.mockImplementation(
+      (_client: unknown, _dashId: number, dashcardId: number) => {
+        if (dashcardId === 1) {
+          return Promise.resolve({
+            rows: [[42]],
+            cols: [
+              {
+                name: 'revenue',
+                displayName: 'Revenue',
+                baseType: 'type/Integer',
+                semanticType: null,
+              },
+            ],
+            rowCount: 1,
+          });
+        }
+        return Promise.resolve({
+          rows: [['Acme', 7]],
+          cols: [
+            { name: 'name', displayName: 'Customer', baseType: 'type/Text', semanticType: null },
+            { name: 'orders', displayName: 'Orders', baseType: 'type/Integer', semanticType: null },
+          ],
+          rowCount: 1,
+        });
+      },
+    );
+
     await render(<DashboardScreen />, { wrapper });
+
+    // Card titles from the dashboard detail.
     await waitFor(() => expect(screen.getByText('Revenue')).toBeTruthy());
     expect(screen.getByText('Orders')).toBeTruthy();
     expect(mockGetDashboard).toHaveBeenCalledWith({}, 9);
+
+    // The scalar card's value and a table cell from the second card render.
+    await waitFor(() => expect(screen.getByText('42')).toBeTruthy());
+    expect(screen.getByText('Acme')).toBeTruthy();
+    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5);
+    expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 2, 6);
   });
 });
