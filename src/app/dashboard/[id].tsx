@@ -20,9 +20,26 @@ import { getDashboard, runDashcardQuery } from '@/api/endpoints';
 import type { DashboardCard, DashboardParameter, DashboardTab } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
+import { FiltersBar } from './FiltersBar';
 
 type InstancesState = { activeInstanceId: string | null };
 type CardParam = { id: string; value: unknown };
+
+/** Seed the param value map from the dashboard's parameter defaults (non-null only). */
+function defaultParamValues(parameters: DashboardParameter[]): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const p of parameters) {
+    if (p.default != null) next[p.id] = p.default;
+  }
+  return next;
+}
+
+/** Build the runDashcardQuery params from applied values, omitting empty entries. */
+function toCardParams(values: Record<string, unknown>): CardParam[] {
+  return Object.entries(values)
+    .filter(([, value]) => value != null && value !== '')
+    .map(([id, value]) => ({ id, value }));
+}
 
 /** The card the user tapped, plus the resolved params used to query it. */
 type SelectedCard = { card: DashboardCard; params: CardParam[] };
@@ -39,6 +56,11 @@ export default function DashboardScreen() {
   // The card opened in the fullscreen modal, or null when the modal is closed.
   const [selected, setSelected] = React.useState<SelectedCard | null>(null);
   const [selectedTabId, setSelectedTabId] = React.useState<number | null>(null);
+  // The currently-applied filter values, keyed by parameter id. Seeded from the
+  // dashboard's parameter defaults once it loads; replaced wholesale on Apply.
+  const [paramValues, setParamValues] = React.useState<Record<string, unknown>>({});
+  // Once seeded from the loaded parameter defaults, don't clobber user edits.
+  const seededRef = React.useRef(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [instanceId, 'dashboard', dashboardId],
@@ -48,6 +70,20 @@ export default function DashboardScreen() {
       return getDashboard(client, dashboardId);
     },
   });
+
+  const parameters: DashboardParameter[] = React.useMemo(
+    () => data?.parameters ?? [],
+    [data?.parameters],
+  );
+
+  React.useEffect(() => {
+    if (seededRef.current) return;
+    if (parameters.length === 0) return;
+    setParamValues(defaultParamValues(parameters));
+    seededRef.current = true;
+  }, [parameters]);
+
+  const cardParams = React.useMemo(() => toCardParams(paramValues), [paramValues]);
 
   const tabs: DashboardTab[] = React.useMemo(() => data?.tabs ?? [], [data?.tabs]);
   // When tabs first load, default-select the first one.
@@ -76,6 +112,8 @@ export default function DashboardScreen() {
         </Text>
         <View style={{ width: 48 }} />
       </View>
+
+      <FiltersBar parameters={parameters} values={paramValues} onApply={setParamValues} />
 
       {tabs.length > 0 && (
         <ScrollView
@@ -132,19 +170,14 @@ export default function DashboardScreen() {
               {t('dashboard.empty')}
             </Text>
           }
-          renderItem={({ item }: { item: DashboardCard }) => {
-            const params = (data?.parameters ?? [])
-              .filter((p: DashboardParameter) => p.default != null)
-              .map((p: DashboardParameter) => ({ id: p.id, value: p.default }));
-            return (
-              <DashcardItem
-                dashboardId={dashboardId}
-                card={item}
-                params={params}
-                onPress={() => setSelected({ card: item, params })}
-              />
-            );
-          }}
+          renderItem={({ item }: { item: DashboardCard }) => (
+            <DashcardItem
+              dashboardId={dashboardId}
+              card={item}
+              params={cardParams}
+              onPress={() => setSelected({ card: item, params: cardParams })}
+            />
+          )}
         />
       )}
 

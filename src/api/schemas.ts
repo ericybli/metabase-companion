@@ -117,6 +117,10 @@ export interface DashboardCard {
 export interface DashboardParameter {
   id: string;
   slug: string;
+  /** Human-readable label; falls back to the slug, then '' when neither is set. */
+  name: string;
+  /** Metabase parameter type, e.g. 'date/all-options','number/=','category'; '' when absent. */
+  type: string;
   /** The parameter's default value; null when not set. */
   default: unknown;
 }
@@ -215,6 +219,8 @@ const DashboardParameterSchema = z
   .object({
     id: z.string().optional(),
     slug: z.string().optional(),
+    name: z.string().optional(),
+    type: z.string().optional(),
     default: z.unknown().optional(),
   })
   .passthrough()
@@ -222,6 +228,8 @@ const DashboardParameterSchema = z
     (raw): DashboardParameter => ({
       id: raw.id ?? '',
       slug: raw.slug ?? '',
+      name: raw.name ?? raw.slug ?? '',
+      type: raw.type ?? '',
       default: raw.default !== undefined ? raw.default : null,
     }),
   );

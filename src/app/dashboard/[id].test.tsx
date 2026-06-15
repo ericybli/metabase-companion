@@ -145,8 +145,14 @@ describe('DashboardScreen', () => {
       description: null,
       cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
       parameters: [
-        { id: 'p1', slug: 'date_filter', default: 'this-month' },
-        { id: 'p2', slug: 'status', default: null }, // null default should be excluded
+        {
+          id: 'p1',
+          slug: 'date_filter',
+          name: 'Date Filter',
+          type: 'date/all-options',
+          default: 'this-month',
+        },
+        { id: 'p2', slug: 'status', name: 'Status', type: 'string/=', default: null }, // null default should be excluded
       ],
     });
     mockRunDashcardQuery.mockResolvedValue({
@@ -306,6 +312,75 @@ describe('DashboardScreen', () => {
     // Tab Two Card now shows, unassigned card is gone
     await waitFor(() => expect(screen.getByText('Tab Two Card')).toBeTruthy());
     expect(screen.queryByText('Unassigned Card')).toBeNull();
+  });
+
+  it('renders no FiltersBar when the dashboard has no parameters', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[42]],
+      cols: [
+        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() => expect(screen.getByText('Revenue')).toBeTruthy());
+    // No "Filters" heading and no "Apply" button when there are no parameters.
+    expect(screen.queryByText('Filters')).toBeNull();
+    expect(screen.queryByText('Apply')).toBeNull();
+  });
+
+  it('shows a FiltersBar and refetches with edited values on Apply', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'Revenue', display: 'scalar', vizSettings: {} }],
+      parameters: [
+        {
+          id: 'p1',
+          slug: 'date_filter',
+          name: 'Date Filter',
+          type: 'date/all-options',
+          default: 'this-month',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [[42]],
+      cols: [
+        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 1,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // The filter input is prefilled with the default and the first query uses it.
+    await waitFor(() => expect(screen.getByDisplayValue('this-month')).toBeTruthy());
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p1', value: 'this-month' },
+      ]),
+    );
+
+    // Edit the value and apply -> the card refetches with the new value.
+    fireEvent.changeText(screen.getByDisplayValue('this-month'), 'last-month');
+    fireEvent.press(screen.getByText('Apply'));
+
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p1', value: 'last-month' },
+      ]),
+    );
   });
 
   it('renders the per-card error state with the ApiException kind when the query fails', async () => {

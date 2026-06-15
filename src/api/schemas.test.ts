@@ -281,20 +281,72 @@ describe('DashboardDetailSchema', () => {
     expect(result.cards[0]?.tabId).toBeNull();
   });
 
-  it('parses parameters array with id, slug, and default', () => {
+  it('parses parameters array with id, slug, name, type, and default', () => {
     const result = DashboardDetailSchema.parse({
       id: 5,
       name: 'Filtered',
       dashcards: [],
       parameters: [
-        { id: 'abc', slug: 'date_filter', default: 'this-month' },
-        { id: 'def', slug: 'status', default: 'active' },
+        {
+          id: 'abc',
+          slug: 'date_filter',
+          name: 'Date Filter',
+          type: 'date/all-options',
+          default: 'this-month',
+        },
+        { id: 'def', slug: 'status', name: 'Status', type: 'string/=', default: 'active' },
       ],
     });
     expect(result.parameters).toEqual([
-      { id: 'abc', slug: 'date_filter', default: 'this-month' },
-      { id: 'def', slug: 'status', default: 'active' },
+      {
+        id: 'abc',
+        slug: 'date_filter',
+        name: 'Date Filter',
+        type: 'date/all-options',
+        default: 'this-month',
+      },
+      { id: 'def', slug: 'status', name: 'Status', type: 'string/=', default: 'active' },
     ]);
+  });
+
+  it('falls back parameter name to slug when name is absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'abc', slug: 'date_filter', type: 'date/all-options' }],
+    });
+    expect(result.parameters[0]?.name).toBe('date_filter');
+  });
+
+  it('falls back parameter name to empty string when both name and slug are absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'abc' }],
+    });
+    expect(result.parameters[0]?.name).toBe('');
+  });
+
+  it('parses parameter type', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'abc', slug: 'amount', name: 'Amount', type: 'number/=' }],
+    });
+    expect(result.parameters[0]?.type).toBe('number/=');
+  });
+
+  it('defaults parameter type to empty string when absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 5,
+      name: 'P',
+      dashcards: [],
+      parameters: [{ id: 'abc', slug: 'foo' }],
+    });
+    expect(result.parameters[0]?.type).toBe('');
   });
 
   it('defaults parameters to [] when absent', () => {
