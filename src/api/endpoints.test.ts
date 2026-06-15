@@ -107,7 +107,7 @@ describe('endpoints', () => {
       id: 9,
       name: 'Sales',
       description: null,
-      cards: [{ dashcardId: 100, cardId: 50, name: 'Revenue', display: 'line' }],
+      cards: [{ dashcardId: 100, cardId: 50, name: 'Revenue', display: 'line', vizSettings: {} }],
     });
   });
 

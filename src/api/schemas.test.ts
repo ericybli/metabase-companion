@@ -151,7 +151,7 @@ describe('DashboardDetailSchema', () => {
       id: 9,
       name: 'S',
       description: null,
-      cards: [{ dashcardId: 1, cardId: 5, name: 'R', display: 'bar' }],
+      cards: [{ dashcardId: 1, cardId: 5, name: 'R', display: 'bar', vizSettings: {} }],
     });
   });
   it('falls back to ordered_cards on older versions', () => {
@@ -161,7 +161,22 @@ describe('DashboardDetailSchema', () => {
         name: 'T',
         ordered_cards: [{ id: 7, card_id: 8, card: { id: 8, name: 'Q', display: null } }],
       }).cards,
-    ).toEqual([{ dashcardId: 7, cardId: 8, name: 'Q', display: null }]);
+    ).toEqual([{ dashcardId: 7, cardId: 8, name: 'Q', display: null, vizSettings: {} }]);
+  });
+  it('captures visualization_settings from card when present', () => {
+    const vizSettings = { 'graph.dimensions': ['date'], 'graph.metrics': ['revenue'] };
+    const result = DashboardDetailSchema.parse({
+      id: 10,
+      name: 'V',
+      dashcards: [
+        {
+          id: 20,
+          card_id: 30,
+          card: { id: 30, name: 'Chart', display: 'line', visualization_settings: vizSettings },
+        },
+      ],
+    });
+    expect(result.cards[0]?.vizSettings).toEqual(vizSettings);
   });
 });
 

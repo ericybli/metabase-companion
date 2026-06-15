@@ -104,6 +104,7 @@ export interface DashboardCard {
   cardId: number;
   name: string;
   display: string | null;
+  vizSettings: Record<string, unknown>;
 }
 export interface DashboardDetail {
   id: number;
@@ -170,6 +171,7 @@ const DashcardSchema = z
         id: z.number().optional(),
         name: z.string().nullable().optional(),
         display: z.string().nullable().optional(),
+        visualization_settings: z.record(z.string(), z.unknown()).nullable().optional(),
       })
       .passthrough()
       .nullable()
@@ -196,6 +198,7 @@ export const DashboardDetailSchema = z
         cardId: dc.card_id,
         name: dc.card?.name ?? '',
         display: dc.card?.display ?? null,
+        vizSettings: dc.card?.visualization_settings ?? {},
       }));
     return {
       id: raw.id,
