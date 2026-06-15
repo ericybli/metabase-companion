@@ -28,7 +28,7 @@ fall back to a table" variant.
 - Secure, low-friction auth: password **and** Google sign-in (when the instance enables it),
   token in secure storage, biometric unlock.
 - Be a well-engineered, contributor-friendly OSS project: TypeScript strict, tests, CI,
-  lint/format, i18n, theming, clear docs, MIT license.
+  lint/format, i18n, theming, clear docs, Apache-2.0 license.
 
 ### Non-goals (out of scope, at least for v1)
 
@@ -339,7 +339,7 @@ metabase-rn/
 ├─ docs/                     # this spec, architecture notes, contributor docs
 ├─ .github/                  # workflows, issue/PR templates
 ├─ app.json / eas.json       # Expo / EAS config
-├─ README.md  CONTRIBUTING.md  CODE_OF_CONDUCT.md  LICENSE (MIT)  CHANGELOG.md
+├─ README.md  CONTRIBUTING.md  CODE_OF_CONDUCT.md  LICENSE (Apache-2.0)  NOTICE  CHANGELOG.md
 └─ tsconfig.json  .eslintrc  .prettierrc
 ```
 

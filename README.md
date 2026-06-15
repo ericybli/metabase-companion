@@ -63,4 +63,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) and our [Code of Conduct](./CODE_OF_CON
 
 ## License
 
-[MIT](./LICENSE) © 2026 Metabase Companion contributors.
+[Apache-2.0](./LICENSE) © 2026 Metabase Companion contributors.
