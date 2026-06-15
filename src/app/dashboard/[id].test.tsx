@@ -442,10 +442,10 @@ describe('DashboardScreen', () => {
       parameters: [
         {
           id: 'p1',
-          slug: 'date_filter',
-          name: 'Date Filter',
-          type: 'date/all-options',
-          default: 'this-month',
+          slug: 'status',
+          name: 'Status',
+          type: 'string/=',
+          default: 'active',
         },
       ],
     });
@@ -460,20 +460,20 @@ describe('DashboardScreen', () => {
     await render(<DashboardScreen />, { wrapper });
 
     // The filter input is prefilled with the default and the first query uses it.
-    await waitFor(() => expect(screen.getByDisplayValue('this-month')).toBeTruthy());
+    await waitFor(() => expect(screen.getByDisplayValue('active')).toBeTruthy());
     await waitFor(() =>
       expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
-        { id: 'p1', value: 'this-month' },
+        { id: 'p1', value: 'active' },
       ]),
     );
 
     // Edit the value and apply -> the card refetches with the new value.
-    fireEvent.changeText(screen.getByDisplayValue('this-month'), 'last-month');
+    fireEvent.changeText(screen.getByDisplayValue('active'), 'inactive');
     fireEvent.press(screen.getByText('Apply'));
 
     await waitFor(() =>
       expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
-        { id: 'p1', value: 'last-month' },
+        { id: 'p1', value: 'inactive' },
       ]),
     );
   });

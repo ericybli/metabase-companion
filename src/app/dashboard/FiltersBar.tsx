@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
+import { DatePicker } from '@/ui/DatePicker';
 import type { DashboardParameter } from '@/api/schemas';
 
 export interface FiltersBarProps {
@@ -12,7 +13,7 @@ export interface FiltersBarProps {
   onApply: (values: Record<string, unknown>) => void;
 }
 
-/** Convert an applied value into the string shown in its TextInput. */
+/** Convert an applied value into the string shown in its TextInput / picker. */
 function toInputText(value: unknown): string {
   if (value == null) return '';
   return String(value);
@@ -30,11 +31,18 @@ function seedEdits(
   return next;
 }
 
+/** True for parameters that should use the calendar picker. */
+function isDateParam(type: string): boolean {
+  return type.startsWith('date');
+}
+
 /**
- * A simple, Expo-Go-safe filter bar: one labeled TextInput per dashboard
- * parameter, holding local edit state seeded from the applied values, plus an
- * Apply button that commits the edits via {@link FiltersBarProps.onApply}.
- * Renders nothing when the dashboard has no parameters.
+ * A simple, Expo-Go-safe filter bar. A header row ("Filters" + a chevron)
+ * toggles between collapsed (header only, with a count of non-empty filters)
+ * and expanded (one labeled control per dashboard parameter + an Apply button).
+ * Date-type parameters render a {@link DatePicker}; everything else a TextInput.
+ * Local edit state is seeded from the applied values and committed via
+ * {@link FiltersBarProps.onApply}. Renders nothing when there are no parameters.
  */
 export function FiltersBar({
   parameters,
@@ -46,6 +54,7 @@ export function FiltersBar({
   const [edits, setEdits] = React.useState<Record<string, string>>(() =>
     seedEdits(parameters, values),
   );
+  const [expanded, setExpanded] = React.useState(true);
 
   // Re-seed when the applied values or parameter set change (e.g. dashboard
   // finishes loading, or Apply elsewhere replaces the values).
@@ -55,13 +64,22 @@ export function FiltersBar({
 
   if (parameters.length === 0) return null;
 
-  function apply() {
+  function setEdit(id: string, text: string): void {
+    setEdits((prev) => ({ ...prev, [id]: text }));
+  }
+
+  function apply(): void {
     const next: Record<string, unknown> = {};
     for (const p of parameters) {
       next[p.id] = edits[p.id] ?? '';
     }
     onApply(next);
   }
+
+  const activeCount = parameters.reduce(
+    (n, p) => (edits[p.id] != null && edits[p.id] !== '' ? n + 1 : n),
+    0,
+  );
 
   return (
     <View
@@ -70,54 +88,80 @@ export function FiltersBar({
         { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border },
       ]}
     >
-      <Text style={[styles.heading, { color: theme.colors.textMuted }]}>
-        {t('dashboard.filters')}
-      </Text>
-      {parameters.map((p) => {
-        const type = p.type ?? '';
-        const numeric = type.startsWith('number');
-        return (
-          <View key={p.id} style={styles.field}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{p.name ?? ''}</Text>
-            <TextInput
-              value={edits[p.id] ?? ''}
-              onChangeText={(text) => setEdits((prev) => ({ ...prev, [p.id]: text }))}
-              onSubmitEditing={apply}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType={numeric ? 'numeric' : 'default'}
-              placeholder={type}
-              placeholderTextColor={theme.colors.textMuted}
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                  borderRadius: theme.radius.md,
-                  padding: theme.spacing(2),
-                },
-              ]}
-            />
-          </View>
-        );
-      })}
       <Pressable
         accessibilityRole="button"
-        onPress={apply}
-        style={[
-          styles.button,
-          { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md },
-        ]}
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((v) => !v)}
+        style={styles.header}
       >
-        <Text style={styles.buttonText}>{t('dashboard.apply')}</Text>
+        <Text style={[styles.heading, { color: theme.colors.textMuted }]}>
+          {t('dashboard.filters')}
+          {!expanded && activeCount > 0 ? ` (${activeCount})` : ''}
+        </Text>
+        <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>
+          {expanded ? '▾' : '▸'}
+        </Text>
       </Pressable>
+
+      {expanded ? (
+        <>
+          {parameters.map((p) => {
+            const type = p.type ?? '';
+            const current = edits[p.id] ?? '';
+            return (
+              <View key={p.id} style={styles.field}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>{p.name ?? ''}</Text>
+                {isDateParam(type) ? (
+                  <DatePicker
+                    value={current !== '' ? current : null}
+                    onChange={(iso) => setEdit(p.id, iso)}
+                    placeholder={type}
+                  />
+                ) : (
+                  <TextInput
+                    value={current}
+                    onChangeText={(text) => setEdit(p.id, text)}
+                    onSubmitEditing={apply}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType={type.startsWith('number') ? 'numeric' : 'default'}
+                    placeholder={type}
+                    placeholderTextColor={theme.colors.textMuted}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.radius.md,
+                        padding: theme.spacing(2),
+                      },
+                    ]}
+                  />
+                )}
+              </View>
+            );
+          })}
+          <Pressable
+            accessibilityRole="button"
+            onPress={apply}
+            style={[
+              styles.button,
+              { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md },
+            ]}
+          >
+            <Text style={styles.buttonText}>{t('dashboard.apply')}</Text>
+          </Pressable>
+        </>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 8, borderBottomWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heading: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  chevron: { fontSize: 12, fontWeight: '600' },
   field: { gap: 4 },
   label: { fontSize: 13, fontWeight: '500' },
   input: { borderWidth: 1 },
