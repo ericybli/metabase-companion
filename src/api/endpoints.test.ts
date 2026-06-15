@@ -4,6 +4,8 @@ import {
   deleteSession,
   listDashboards,
   getDashboard,
+  runDashcardQuery,
+  runCardQuery,
 } from './endpoints';
 import type { MetabaseClient } from './client';
 
@@ -106,6 +108,76 @@ describe('endpoints', () => {
       name: 'Sales',
       description: null,
       cards: [{ dashcardId: 100, cardId: 50, name: 'Revenue', display: 'line' }],
+    });
+  });
+
+  it('runDashcardQuery calls POST with exact path, body { parameters: [] }, and parses QueryResult', async () => {
+    const raw = {
+      data: {
+        rows: [[10], [20]],
+        cols: [
+          { name: 'count', display_name: 'Count', base_type: 'type/Integer', semantic_type: null },
+        ],
+      },
+      row_count: 2,
+    };
+    const post = jest.fn(
+      async (_path: string, _body: unknown, schema: { parse: (v: unknown) => unknown }) =>
+        schema.parse(raw),
+    );
+    const client = { post } as unknown as MetabaseClient;
+
+    const result = await runDashcardQuery(client, 5, 101, 42);
+
+    expect(post).toHaveBeenCalledWith(
+      '/api/dashboard/5/dashcard/101/card/42/query',
+      { parameters: [] },
+      expect.anything(),
+    );
+    expect(result).toEqual({
+      rows: [[10], [20]],
+      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      rowCount: 2,
+    });
+  });
+
+  it('runCardQuery calls POST with exact path, empty body, and parses QueryResult', async () => {
+    const raw = {
+      data: {
+        rows: [['Alice', 100]],
+        cols: [
+          { name: 'name', display_name: 'Name', base_type: 'type/Text', semantic_type: null },
+          {
+            name: 'revenue',
+            display_name: 'Revenue',
+            base_type: 'type/Float',
+            semantic_type: 'type/Currency',
+          },
+        ],
+      },
+      row_count: 1,
+    };
+    const post = jest.fn(
+      async (_path: string, _body: unknown, schema: { parse: (v: unknown) => unknown }) =>
+        schema.parse(raw),
+    );
+    const client = { post } as unknown as MetabaseClient;
+
+    const result = await runCardQuery(client, 77);
+
+    expect(post).toHaveBeenCalledWith('/api/card/77/query', {}, expect.anything());
+    expect(result).toEqual({
+      rows: [['Alice', 100]],
+      cols: [
+        { name: 'name', displayName: 'Name', baseType: 'type/Text', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Float',
+          semanticType: 'type/Currency',
+        },
+      ],
+      rowCount: 1,
     });
   });
 });
