@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 
 export interface ChartLegendProps {
@@ -20,9 +21,11 @@ export interface ChartLegendProps {
  * Compact multi-series legend: a colored swatch + series name per entry,
  * wrapping across rows. Each entry is a <Pressable> that toggles its series'
  * visibility via {@link ChartLegendProps.onToggle}; hidden entries render dimmed
- * with a strikethrough so it's clear they're filtered out. Rendered with plain
- * RN <Text> so it's matchable by RNTL's getByText (unlike react-native-svg
- * <Text>).
+ * with a strikethrough so it's clear they're filtered out. Each entry is exposed
+ * as an accessibility checkbox (checked = visible) with a descriptive
+ * accessibilityLabel and a generous hitSlop so the small swatch/label still
+ * meets a comfortable tap target. Rendered with plain RN <Text> so it's
+ * matchable by RNTL's getByText (unlike react-native-svg <Text>).
  */
 export function ChartLegend({
   names,
@@ -31,6 +34,7 @@ export function ChartLegend({
   onToggle,
 }: ChartLegendProps): React.ReactElement {
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={styles.legend}>
       {names.map((name, i) => {
@@ -39,8 +43,10 @@ export function ChartLegend({
           <Pressable
             key={`legend-${i}`}
             testID={`chart-legend-${i}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: !isHidden }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: !isHidden }}
+            accessibilityLabel={t(isHidden ? 'chart.legendShow' : 'chart.legendHide', { name })}
+            hitSlop={8}
             onPress={() => onToggle?.(i)}
             style={[styles.legendItem, isHidden ? styles.legendItemHidden : null]}
           >
@@ -74,6 +80,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
     marginBottom: 2,
+    paddingVertical: 6,
   },
   legendItemHidden: { opacity: 0.4 },
   swatch: { width: 10, height: 10, borderRadius: 2, marginRight: 4 },

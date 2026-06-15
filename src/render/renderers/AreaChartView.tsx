@@ -141,7 +141,7 @@ export function AreaChartView({
           {labelIndices.map((i) => (
             <SvgText
               key={`label-${i}`}
-              x={touchBands[i]?.centerX ?? seriesPoints[0]?.[i]?.x ?? plot.innerLeft}
+              x={touchBands[i]?.centerX ?? plot.innerLeft}
               y={plot.innerBottom + 16}
               fontSize={9}
               fill={theme.colors.textMuted}

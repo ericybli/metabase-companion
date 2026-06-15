@@ -60,6 +60,8 @@ export const resources = {
         showingNofM: 'Showing {{shown}} of {{total}}',
         unsupported: 'Shown as a table ({{display}} not yet supported)',
         queryFailed: 'Query failed',
+        legendHide: 'Hide {{name}} series',
+        legendShow: 'Show {{name}} series',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -126,6 +128,8 @@ export const resources = {
         showingNofM: '显示 {{shown}} / {{total}}',
         unsupported: '以表格显示（{{display}} 暂不支持）',
         queryFailed: '查询失败',
+        legendHide: '隐藏{{name}}系列',
+        legendShow: '显示{{name}}系列',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',
