@@ -25,15 +25,16 @@ Then open the project in a simulator/emulator, or in a development build (see be
 
 ### Scripts
 
-| Command             | Description                     |
-| ------------------- | ------------------------------- |
-| `npm start`         | Start the Expo dev server       |
-| `npm run ios`       | Start + open iOS simulator      |
-| `npm run android`   | Start + open Android emulator   |
-| `npm run typecheck` | TypeScript type-check (no emit) |
-| `npm run lint`      | ESLint (Expo config)            |
-| `npm run format`    | Format with Prettier            |
-| `npm test`          | Run the Jest test suite         |
+| Command             | Description                               |
+| ------------------- | ----------------------------------------- |
+| `npm start`         | Start the Expo dev server                 |
+| `npm run tunnel`    | Dev server over a tunnel (remote Expo Go) |
+| `npm run ios`       | Start + open iOS simulator                |
+| `npm run android`   | Start + open Android emulator             |
+| `npm run typecheck` | TypeScript type-check (no emit)           |
+| `npm run lint`      | ESLint (Expo config)                      |
+| `npm run format`    | Format with Prettier                      |
+| `npm test`          | Run the Jest test suite                   |
 
 ### Development build required for some features
 
@@ -51,6 +52,19 @@ Everything else runs in Expo Go for fast iteration.
 > Google OAuth client for the app and add the `@react-native-google-signin/google-signin` config
 > plugin (with your `iosUrlScheme`) to `app.json`. Until then, use username/password — which works
 > on every Metabase instance.
+
+### Remote access (Expo Go over the internet)
+
+If your phone isn't on the same Wi-Fi as your computer, run the dev server through a tunnel so
+Expo Go can reach it from any network (the JS bundle is served via ngrok):
+
+```bash
+npm run tunnel        # = expo start --tunnel
+```
+
+The first run prompts to install `@expo/ngrok` (one-time — press `Y`). Then scan the QR with Expo
+Go over cellular or any Wi-Fi. The app still talks directly to your Metabase, so that instance must
+be reachable from the phone — a public URL works anywhere; a LAN/localhost instance does not.
 
 ## Tech stack
 
