@@ -43,7 +43,9 @@
           "faceIDPermission": "Allow Metabase Companion to use Face ID to unlock the app."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

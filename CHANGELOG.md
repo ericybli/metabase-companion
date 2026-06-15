@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Project scaffold: Expo (managed, SDK 56) + TypeScript (strict) + Expo Router.
+- Project scaffold: Expo (managed, SDK 54) + TypeScript (strict) + Expo Router.
 - Tooling: ESLint (Expo config) + Prettier, Jest (jest-expo) + React Native Testing Library + MSW, GitHub Actions CI.
 - **M0 Foundation** — typed Metabase REST client (`MetabaseClient`) with `X-Metabase-Session`
   auth header and single-retry 401 handling; Zod defensive parsing of session properties /
