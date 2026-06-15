@@ -7,6 +7,8 @@ import { TableView } from '@/render/renderers/TableView';
 import { BarChartView } from '@/render/renderers/BarChartView';
 import { LineChartView } from '@/render/renderers/LineChartView';
 import { AreaChartView } from '@/render/renderers/AreaChartView';
+import { ComboChartView } from '@/render/renderers/ComboChartView';
+import { RowChartView } from '@/render/renderers/RowChartView';
 import { PieChartView } from '@/render/renderers/PieChartView';
 import type { QueryResult } from '@/api/schemas';
 
@@ -26,10 +28,11 @@ export interface CardViewProps {
 /**
  * Registry that picks a native renderer from a card's `display`:
  *   scalar/smartscalar -> ScalarView, table/pivot -> TableView,
- *   bar/row -> BarChartView, line -> LineChartView, area -> AreaChartView,
- *   pie -> PieChartView. Any unknown display falls back to TableView (we
- *   always have the rows) prefixed by a small note that explains the
- *   substitution.
+ *   bar -> BarChartView, row -> RowChartView (horizontal bars),
+ *   line -> LineChartView, area -> AreaChartView, combo -> ComboChartView
+ *   (mixed bar + line), pie -> PieChartView. Any unknown display falls back to
+ *   TableView (we always have the rows) prefixed by a small note that explains
+ *   the substitution.
  *
  * If the result carries an error or a non-completed status, renders a themed
  * error message instead of a chart or "No data".
@@ -62,12 +65,15 @@ export function CardView({
     case 'pivot':
       return <TableView result={result} />;
     case 'bar':
-    case 'row':
       return <BarChartView result={result} vizSettings={vizSettings} height={height} />;
+    case 'row':
+      return <RowChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'line':
       return <LineChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'area':
       return <AreaChartView result={result} vizSettings={vizSettings} height={height} />;
+    case 'combo':
+      return <ComboChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'pie':
       return <PieChartView result={result} vizSettings={vizSettings} height={height} />;
     default:

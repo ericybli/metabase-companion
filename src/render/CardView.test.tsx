@@ -67,8 +67,13 @@ describe('CardView registry', () => {
     expect(screen.getByText('Total')).toBeTruthy();
   });
 
-  it('routes row to BarChartView', async () => {
+  it('routes row to RowChartView (horizontal bars, shows the metric title)', async () => {
     await render(<CardView display="row" result={seriesResult} vizSettings={{}} name="Sales" />);
+    expect(screen.getByText('Total')).toBeTruthy();
+  });
+
+  it('routes combo to ComboChartView (shows the metric title)', async () => {
+    await render(<CardView display="combo" result={seriesResult} vizSettings={{}} name="Sales" />);
     expect(screen.getByText('Total')).toBeTruthy();
   });
 
@@ -127,7 +132,7 @@ describe('CardView registry', () => {
     error: null,
   };
 
-  it.each(['bar', 'row', 'line', 'area', 'pie'])(
+  it.each(['bar', 'row', 'line', 'area', 'combo', 'pie'])(
     'renders %s with empty rows without throwing and shows the no-data message',
     async (display) => {
       // Rendering must not throw on empty data.

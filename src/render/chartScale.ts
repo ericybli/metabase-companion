@@ -314,6 +314,104 @@ export function getGroupedBarGeometryForDomains(
   return bars;
 }
 
+export interface RowBar extends BarGeometry {
+  /** Index of the series this bar belongs to (for palette color lookup). */
+  seriesIndex: number;
+  /** Index of the category / row band this bar belongs to. */
+  labelIndex: number;
+  /** Center y of the bar (where its value label sits). */
+  centerY: number;
+}
+
+/** A band covering one category row in a horizontal (row) chart. */
+export interface RowBand {
+  /** Index of the category / row this band covers. */
+  index: number;
+  /** Top edge of the band (px). */
+  y: number;
+  /** Band height (px). */
+  height: number;
+  /** Center y of the band (px) — where the category label sits. */
+  centerY: number;
+}
+
+/**
+ * Compute one full-width row band per category for a HORIZONTAL (row) chart.
+ * Bands tile the inner plot HEIGHT top-to-bottom with no gaps, so a transparent
+ * <Rect> over a band makes that category tappable (tap-for-value) and the
+ * category label can be centered against it. Returns an empty array when
+ * count <= 0.
+ */
+export function getRowBands(count: number, plot: PlotArea): RowBand[] {
+  if (count <= 0) {
+    return [];
+  }
+  const bandHeight = plot.innerHeight / count;
+  return Array.from({ length: count }, (_, index) => {
+    const y = plot.innerTop + index * bandHeight;
+    return { index, y, height: bandHeight, centerY: y + bandHeight / 2 };
+  });
+}
+
+/**
+ * Compute HORIZONTAL grouped bars: categories run top-to-bottom (one band per
+ * label) and bars grow LEFT-TO-RIGHT from the value-axis origin along x. Within
+ * each category band the visible series stack vertically side-by-side, each
+ * filling an equal sub-slot of 80% of the band height. All series share the
+ * value domain [valueMin, valueMax] so bar lengths are comparable across the
+ * chart; the bars start at `max(valueMin, 0)` so a 0-anchored axis grows from the
+ * left edge. `null` / non-finite values yield a zero-width (invisible) bar. Bars
+ * are returned row-major then series-major, each tagged with its indices.
+ *
+ * `series` is series-major (series[s][labelIndex]).
+ */
+export function getRowBarGeometry(
+  series: readonly (readonly (number | null)[])[],
+  labelCount: number,
+  plot: PlotArea,
+  valueMin: number,
+  valueMax: number,
+): RowBar[] {
+  const seriesCount = series.length;
+  if (seriesCount === 0 || labelCount === 0) {
+    return [];
+  }
+  const span = valueMax - valueMin;
+  const safeSpan = span !== 0 ? span : 1;
+  // The x pixel for a value within the value domain.
+  const valueToX = (v: number): number =>
+    plot.innerLeft + ((v - valueMin) / safeSpan) * plot.innerWidth;
+  const origin = valueToX(Math.max(valueMin, 0));
+
+  const bandHeight = plot.innerHeight / labelCount;
+  const groupHeight = bandHeight * 0.8;
+  const barHeight = Math.max(1, groupHeight / seriesCount);
+  const bars: RowBar[] = [];
+  for (let labelIndex = 0; labelIndex < labelCount; labelIndex++) {
+    const bandTop = plot.innerTop + labelIndex * bandHeight;
+    const groupTop = bandTop + (bandHeight - groupHeight) / 2;
+    for (let seriesIndex = 0; seriesIndex < seriesCount; seriesIndex++) {
+      const raw = series[seriesIndex]?.[labelIndex];
+      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
+      const valX = valueToX(value);
+      const x = Math.min(origin, valX);
+      const width = Math.max(0, Math.abs(valX - origin));
+      const y = groupTop + seriesIndex * barHeight;
+      bars.push({
+        x,
+        y,
+        width,
+        height: barHeight,
+        centerX: x + width / 2,
+        centerY: y + barHeight / 2,
+        seriesIndex,
+        labelIndex,
+      });
+    }
+  }
+  return bars;
+}
+
 export interface LinePoint {
   x: number;
   y: number;

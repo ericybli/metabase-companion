@@ -11,6 +11,8 @@ import {
   getLinePointsWithMax,
   getPieSlices,
   getPlotArea,
+  getRowBands,
+  getRowBarGeometry,
   paletteColor,
   pickAxisLabelIndices,
   pointsToString,
@@ -414,5 +416,72 @@ describe('yAxisTicks', () => {
     const sorted = [...ticks].sort((a, b) => a - b);
     expect(ticks).toEqual(sorted);
     expect(new Set(ticks).size).toBe(ticks.length);
+  });
+});
+
+describe('getRowBands', () => {
+  it('tiles the inner height top-to-bottom with no gaps', () => {
+    const plot = getPlotArea(400, 220);
+    const bands = getRowBands(4, plot);
+    expect(bands).toHaveLength(4);
+    expect(bands[0]?.y).toBe(plot.innerTop);
+    // Each band starts where the previous ends; the last reaches the bottom.
+    expect(bands[3]!.y + bands[3]!.height).toBeCloseTo(plot.innerBottom, 5);
+    // Centers are inside each band.
+    for (const b of bands) {
+      expect(b.centerY).toBeGreaterThan(b.y);
+      expect(b.centerY).toBeLessThan(b.y + b.height);
+    }
+  });
+
+  it('returns an empty array for count <= 0', () => {
+    expect(getRowBands(0, getPlotArea(400, 220))).toEqual([]);
+  });
+});
+
+describe('getRowBarGeometry', () => {
+  const plot = getPlotArea(400, 220);
+
+  it('grows bars left-to-right from the value origin', () => {
+    const bars = getRowBarGeometry([[10, 25, 18]], 3, plot, 0, 25);
+    expect(bars).toHaveLength(3);
+    // All bars start at the left value-axis origin (value 0).
+    for (const b of bars) {
+      expect(b.x).toBeCloseTo(plot.innerLeft, 5);
+    }
+    // The largest value is the widest bar; a 0-domain value has zero width.
+    const widths = bars.map((b) => b.width);
+    expect(Math.max(...widths)).toBe(bars[1]?.width);
+    // The full-scale value (25) spans the whole inner width.
+    expect(bars[1]?.width).toBeCloseTo(plot.innerWidth, 5);
+  });
+
+  it('stacks multiple series within each row band', () => {
+    const bars = getRowBarGeometry(
+      [
+        [10, 20],
+        [5, 8],
+      ],
+      2,
+      plot,
+      0,
+      20,
+    );
+    // 2 series x 2 rows = 4 bars; the two series in a row do not overlap in y.
+    expect(bars).toHaveLength(4);
+    const row0 = bars.filter((b) => b.labelIndex === 0).sort((a, b) => a.y - b.y);
+    expect(row0).toHaveLength(2);
+    expect(row0[0]!.y + row0[0]!.height).toBeLessThanOrEqual(row0[1]!.y + 0.001);
+  });
+
+  it('treats null / non-finite values as a zero-width bar', () => {
+    const bars = getRowBarGeometry([[null, 10]], 2, plot, 0, 10);
+    expect(bars[0]?.width).toBe(0);
+    expect(bars[1]?.width).toBeGreaterThan(0);
+  });
+
+  it('returns an empty array for no series or no labels', () => {
+    expect(getRowBarGeometry([], 3, plot, 0, 10)).toEqual([]);
+    expect(getRowBarGeometry([[1, 2]], 0, plot, 0, 10)).toEqual([]);
   });
 });
