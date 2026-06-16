@@ -57,6 +57,9 @@ export const resources = {
         resetZoom: 'Reset zoom',
         select: 'Select…',
         clear: 'Clear',
+        pointDetails: 'Point details',
+        filterBy: 'Filter: {{name}} = {{value}}',
+        close: 'Close',
       },
       chart: {
         noData: 'No data',
@@ -69,6 +72,7 @@ export const resources = {
         waterfallCumulative: 'Total so far',
         waterfallTotal: 'Total',
         pieTotal: 'Total',
+        scatterSize: 'Size',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -132,6 +136,9 @@ export const resources = {
         resetZoom: '重置缩放',
         select: '请选择…',
         clear: '清除',
+        pointDetails: '数据点详情',
+        filterBy: '筛选：{{name}} = {{value}}',
+        close: '关闭',
       },
       chart: {
         noData: '暂无数据',
@@ -144,6 +151,7 @@ export const resources = {
         waterfallCumulative: '累计',
         waterfallTotal: '合计',
         pieTotal: '合计',
+        scatterSize: '大小',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',

@@ -158,6 +158,26 @@ describe('BarChartView', () => {
     expect(screen.getByText('Returns: 12')).toBeTruthy();
   });
 
+  it('calls onPointSelect with the tapped point info when a column is tapped', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <BarChartView result={twoSeries} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+
+    // Tap the second column (Feb: Total=25, Returns=12).
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    expect(onPointSelect).toHaveBeenCalledWith({
+      index: 1,
+      label: 'Feb',
+      points: [
+        { name: 'Total', value: 25 },
+        { name: 'Returns', value: 12 },
+      ],
+    });
+  });
+
   it('clears the tooltip when the same column is tapped again', async () => {
     await render(<BarChartView result={threePoint} vizSettings={{}} />);
     fireEvent.press(screen.getByTestId('chart-touch-0'));

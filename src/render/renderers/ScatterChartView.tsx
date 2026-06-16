@@ -14,6 +14,7 @@ import {
 } from '@/render/chartScale';
 import { formatNumber as fmtNum } from '@/viz/format';
 import { bubbleRadius, buildScatterModel } from '@/viz/model/scatterModel';
+import { type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { ChartLegend } from './ChartLegend';
 import { ChartYAxis } from './ChartYAxis';
 import { useHiddenSeries } from './useHiddenSeries';
@@ -24,6 +25,13 @@ export interface ScatterChartViewProps {
   vizSettings: Record<string, unknown>;
   /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
   height?: number;
+  /**
+   * Optional drill-through callback. When provided, tapping a point reports the
+   * tapped point (its x value as the label, plus the series' y and any bubble
+   * size as values) IN ADDITION to toggling the in-chart tooltip, so a dashboard
+   * can open a richer action sheet. Omitted -> only the tooltip is affected.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /** A point currently selected for the tooltip. */
@@ -46,6 +54,7 @@ export function ScatterChartView({
   result,
   vizSettings,
   height = CHART_HEIGHT,
+  onPointSelect,
 }: ScatterChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -82,6 +91,19 @@ export function ScatterChartView({
         ? null
         : { seriesIndex, pointIndex },
     );
+    if (onPointSelect) {
+      const s = model.series[seriesIndex];
+      const p = s?.points[pointIndex];
+      if (s && p) {
+        // Scatter has no categorical x-axis: the tapped point's x value IS the
+        // "label", and the series y (plus any bubble size) are the values.
+        const points = [{ name: s.name, value: p.y }];
+        if (p.size !== null) {
+          points.push({ name: t('chart.scatterSize'), value: p.size });
+        }
+        onPointSelect({ index: pointIndex, label: formatNumber(p.x), points });
+      }
+    }
   };
 
   const selectedSeries = selected ? model.series[selected.seriesIndex] : undefined;

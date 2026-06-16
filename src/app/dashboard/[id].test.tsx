@@ -567,6 +567,104 @@ describe('DashboardScreen', () => {
     );
   });
 
+  it('opens the drill action sheet with the clicked point details on a chart tap', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'By State', display: 'bar', vizSettings: {} }],
+      // No settable parameter -> details-only fallback (no Filter button).
+      parameters: [],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Tap the first column (Wisconsin: Count=312).
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+
+    // The action sheet shows the dimension label as its header and the series
+    // row. ("Wisconsin"/"Count: 312" also appear in the chart tooltip, so scope
+    // the assertions to the drill sheet itself.)
+    const sheet = await screen.findByTestId('drill-sheet');
+    expect(within(sheet).getByText('Wisconsin')).toBeTruthy();
+    expect(within(sheet).getByText('Count: 312')).toBeTruthy();
+    expect(within(sheet).getByTestId('drill-close')).toBeTruthy();
+    // No settable parameter -> no Filter button is offered.
+    expect(within(sheet).queryByText(/^Filter:/)).toBeNull();
+  });
+
+  it('sets the parameter value and closes the sheet when the Filter button is tapped', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [{ dashcardId: 1, cardId: 5, name: 'By State', display: 'bar', vizSettings: {} }],
+      parameters: [
+        {
+          id: 'p_state',
+          slug: 'state',
+          name: 'State',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // The first query runs with no parameter value (null default excluded).
+    await waitFor(() => expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []));
+
+    // Tap the first column to open the drill sheet.
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+
+    // The settable string parameter is offered as a Filter button.
+    const filterBtn = await screen.findByTestId('drill-filter-p_state');
+    expect(screen.getByText('Filter: State = Wisconsin')).toBeTruthy();
+
+    // Tapping it cross-filters: the card refetches with the clicked label and the
+    // sheet closes.
+    fireEvent.press(filterBtn);
+
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p_state', value: 'Wisconsin' },
+      ]),
+    );
+    await waitFor(() => expect(screen.queryByTestId('drill-filter-p_state')).toBeNull());
+    expect(screen.queryByTestId('drill-close')).toBeNull();
+  });
+
   it('renders the per-card error state with the ApiException kind when the query fails', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,

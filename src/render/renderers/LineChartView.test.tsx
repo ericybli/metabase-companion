@@ -150,6 +150,26 @@ describe('LineChartView', () => {
     expect(screen.queryByTestId('chart-tooltip')).toBeNull();
   });
 
+  it('calls onPointSelect with the tapped point info when a point is tapped', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <LineChartView result={twoSeries} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+
+    // Tap the second point (Feb: Revenue=25, Cost=12).
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    expect(onPointSelect).toHaveBeenCalledWith({
+      index: 1,
+      label: 'Feb',
+      points: [
+        { name: 'Revenue', value: 25 },
+        { name: 'Cost', value: 12 },
+      ],
+    });
+  });
+
   it('renders a left y-axis with abbreviated value tick labels', async () => {
     const { UNSAFE_getAllByType } = await render(
       <LineChartView result={bigSeries} vizSettings={{}} />,

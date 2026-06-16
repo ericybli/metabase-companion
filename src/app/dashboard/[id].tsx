@@ -28,10 +28,14 @@ import { getDashboard, getParameterValues, runDashcardQuery } from '@/api/endpoi
 import type { DashboardCard, DashboardParameter, DashboardTab } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
+import { settableFilterParams, type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { FiltersBar } from './FiltersBar';
 
 type InstancesState = { activeInstanceId: string | null };
 type CardParam = { id: string; value: unknown };
+
+/** A tapped chart point, captured for the drill-through action sheet. */
+type DrillTarget = { card: DashboardCard; info: PointSelectInfo };
 
 /** Seed the param value map from the dashboard's parameter defaults (non-null only). */
 function defaultParamValues(parameters: DashboardParameter[]): Record<string, unknown> {
@@ -63,6 +67,8 @@ export default function DashboardScreen() {
 
   // The card opened in the fullscreen modal, or null when the modal is closed.
   const [selected, setSelected] = React.useState<SelectedCard | null>(null);
+  // The tapped chart point driving the drill-through sheet, or null when closed.
+  const [drill, setDrill] = React.useState<DrillTarget | null>(null);
   const [selectedTabId, setSelectedTabId] = React.useState<number | null>(null);
   // The currently-applied filter values, keyed by parameter id. Seeded from the
   // dashboard's parameter defaults once it loads; replaced wholesale on Apply.
@@ -92,6 +98,14 @@ export default function DashboardScreen() {
   }, [parameters]);
 
   const cardParams = React.useMemo(() => toCardParams(paramValues), [paramValues]);
+
+  // Cross-filter: set a dashboard parameter to the clicked point's label, then
+  // close the drill sheet so the connected cards refetch with the new value.
+  // (Read-only: this only mutates parameterValues — no navigation, no new query.)
+  const applyCrossFilter = React.useCallback((paramId: string, value: string): void => {
+    setParamValues((prev) => ({ ...prev, [paramId]: value }));
+    setDrill(null);
+  }, []);
 
   // Lazily fetch selectable values for a field/card-backed parameter (used by
   // the FiltersBar dropdowns). Builds an instance client per call, mirroring the
@@ -201,6 +215,7 @@ export default function DashboardScreen() {
               card={item}
               params={cardParams}
               onPress={() => setSelected({ card: item, params: cardParams })}
+              onPointSelect={(info) => setDrill({ card: item, info })}
             />
           )}
         />
@@ -211,7 +226,110 @@ export default function DashboardScreen() {
         selected={selected}
         onClose={() => setSelected(null)}
       />
+
+      <DrillSheet
+        drill={drill}
+        parameters={parameters}
+        onApplyFilter={applyCrossFilter}
+        onClose={() => setDrill(null)}
+      />
     </View>
+  );
+}
+
+/**
+ * Drill-through bottom action sheet shown when a chart point is tapped. It always
+ * surfaces the clicked point's details — the dimension label and one row per
+ * series ("{name}: {value}") — and, when the dashboard has at least one settable
+ * (string/category/id) parameter, offers a one-tap "Filter: {param} = {label}"
+ * per such parameter. Tapping a Filter button writes the clicked dimension label
+ * into that parameter (cross-filter) and dismisses the sheet so connected cards
+ * refetch. With no settable parameter it is a read-only details view.
+ */
+function DrillSheet({
+  drill,
+  parameters,
+  onApplyFilter,
+  onClose,
+}: {
+  drill: DrillTarget | null;
+  parameters: DashboardParameter[];
+  onApplyFilter: (paramId: string, value: string) => void;
+  onClose: () => void;
+}): React.ReactElement {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const filterable = React.useMemo(() => settableFilterParams(parameters), [parameters]);
+
+  return (
+    <Modal visible={drill != null} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('dashboard.close')}
+        testID="drill-backdrop"
+        style={styles.drillBackdrop}
+        onPress={onClose}
+      >
+        {/* Inner Pressable swallows taps on the sheet so they don't dismiss it. */}
+        <Pressable
+          testID="drill-sheet"
+          style={[
+            styles.drillSheet,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              borderTopLeftRadius: theme.radius.md,
+              borderTopRightRadius: theme.radius.md,
+              paddingBottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          {drill != null ? (
+            <>
+              <Text style={[styles.drillHeader, { color: theme.colors.text }]} numberOfLines={2}>
+                {drill.info.label}
+              </Text>
+              {drill.info.points.map((p, i) => (
+                <Text
+                  key={`drill-pt-${i}`}
+                  style={[styles.drillRow, { color: theme.colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  {p.name}: {p.value}
+                </Text>
+              ))}
+              {filterable.map((param) => (
+                <Pressable
+                  key={`drill-filter-${param.id}`}
+                  accessibilityRole="button"
+                  testID={`drill-filter-${param.id}`}
+                  onPress={() => onApplyFilter(param.id, drill.info.label)}
+                  style={[
+                    styles.drillFilterButton,
+                    { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm },
+                  ]}
+                >
+                  <Text style={styles.drillFilterText} numberOfLines={1}>
+                    {t('dashboard.filterBy', { name: param.name, value: drill.info.label })}
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                testID="drill-close"
+                onPress={onClose}
+                style={styles.drillClose}
+              >
+                <Text style={{ color: theme.colors.primary, fontSize: 16 }}>
+                  {t('dashboard.close')}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -247,11 +365,13 @@ function DashcardItem({
   card,
   params,
   onPress,
+  onPointSelect,
 }: {
   dashboardId: number;
   card: DashboardCard;
   params: CardParam[];
   onPress: () => void;
+  onPointSelect: (info: PointSelectInfo) => void;
 }): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -285,6 +405,7 @@ function DashcardItem({
             result={data}
             vizSettings={card.vizSettings}
             name={card.name}
+            onPointSelect={onPointSelect}
           />
         ) : null}
       </View>
@@ -601,6 +722,18 @@ const styles = StyleSheet.create({
   card: { padding: 16, borderWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { marginTop: 12 },
+  drillBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  drillSheet: { paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1 },
+  drillHeader: { fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  drillRow: { fontSize: 14, marginBottom: 4 },
+  drillFilterButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  drillFilterText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  drillClose: { marginTop: 16, alignItems: 'center', paddingVertical: 8 },
   tabItem: {
     paddingHorizontal: 12,
     paddingVertical: 10,

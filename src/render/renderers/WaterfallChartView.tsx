@@ -17,6 +17,7 @@ import {
   waterfallColors,
   type WaterfallStep,
 } from '@/viz/model/waterfallModel';
+import { buildPointSelectInfo, type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { ChartYAxis } from './ChartYAxis';
 import type { QueryResult } from '@/api/schemas';
 
@@ -25,6 +26,13 @@ export interface WaterfallChartViewProps {
   vizSettings: Record<string, unknown>;
   /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
   height?: number;
+  /**
+   * Optional drill-through callback. When provided, tapping a bar reports the
+   * tapped step (its index, category label, and the measure's value at that
+   * step) IN ADDITION to toggling the in-chart tooltip, so a dashboard can open
+   * a richer action sheet. Omitted -> only the tooltip is affected.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /**
@@ -42,6 +50,7 @@ export function WaterfallChartView({
   result,
   vizSettings,
   height = CHART_HEIGHT,
+  onPointSelect,
 }: WaterfallChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -91,8 +100,20 @@ export function WaterfallChartView({
     return { step, x: centerX - barWidth / 2, y: top, height: barHeight, centerX, index: i };
   });
 
+  // A tap toggles the in-chart tooltip AND (when wired) reports the step for the
+  // dashboard drill action sheet. The waterfall is a single measure stepped
+  // across categories, so we report one series (the measure) carrying each step's
+  // signed value, keyed by the step labels.
   const toggle = (i: number): void => {
     setSelectedIndex((prev) => (prev === i ? null : i));
+    if (onPointSelect) {
+      const labels = steps.map((s) => s.label);
+      const values = steps.map((s) => s.value);
+      const info = buildPointSelectInfo(i, labels, [{ name: model.measureName, values }]);
+      if (info) {
+        onPointSelect(info);
+      }
+    }
   };
 
   const selected = selectedIndex !== null ? bars[selectedIndex] : undefined;

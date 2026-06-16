@@ -16,6 +16,7 @@ import { RowChartView } from '@/render/renderers/RowChartView';
 import { PieChartView } from '@/render/renderers/PieChartView';
 import { ScatterChartView } from '@/render/renderers/ScatterChartView';
 import { WaterfallChartView } from '@/render/renderers/WaterfallChartView';
+import type { PointSelectInfo } from '@/viz/drill/pointSelect';
 import type { QueryResult } from '@/api/schemas';
 
 export interface CardViewProps {
@@ -29,6 +30,13 @@ export interface CardViewProps {
    * consumer make charts taller without changing the inline default.
    */
   height?: number;
+  /**
+   * Optional drill-through callback forwarded to the cartesian/scatter/waterfall
+   * renderers (bar/line/area/combo/scatter/waterfall). When set, tapping a point
+   * on one of those charts reports the tapped point so a dashboard can open a
+   * details / cross-filter action sheet. Other displays ignore it.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /**
@@ -54,6 +62,7 @@ export function CardView({
   vizSettings,
   name,
   height,
+  onPointSelect,
 }: CardViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -83,21 +92,63 @@ export function CardView({
     case 'pivot':
       return <TableView result={result} />;
     case 'bar':
-      return <BarChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <BarChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'row':
       return <RowChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'line':
-      return <LineChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <LineChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'area':
-      return <AreaChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <AreaChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'combo':
-      return <ComboChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <ComboChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'pie':
       return <PieChartView result={result} vizSettings={vizSettings} height={height} />;
     case 'scatter':
-      return <ScatterChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <ScatterChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'waterfall':
-      return <WaterfallChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <WaterfallChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     default:
       return <UnsupportedTable display={display} result={result} />;
   }

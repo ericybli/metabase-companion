@@ -14,6 +14,7 @@ import {
   type DomainSeries,
 } from '@/render/chartScale';
 import { buildCartesianModel } from '@/viz/model/cartesianModel';
+import { buildPointSelectInfo, type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { ChartLegend } from './ChartLegend';
 import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import { ChartYAxis } from './ChartYAxis';
@@ -25,6 +26,13 @@ export interface BarChartViewProps {
   vizSettings: Record<string, unknown>;
   /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
   height?: number;
+  /**
+   * Optional drill-through callback. When provided, tapping a column reports the
+   * tapped point (its index, x label, and each visible series' value) IN ADDITION
+   * to toggling the in-chart tooltip, so a dashboard can open a richer action
+   * sheet. Omitted -> only the tooltip is affected.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /**
@@ -41,6 +49,7 @@ export function BarChartView({
   result,
   vizSettings,
   height = CHART_HEIGHT,
+  onPointSelect,
 }: BarChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -109,6 +118,18 @@ export function BarChartView({
   // One full-height transparent touch band per label for tap-for-value.
   const touchBands = getCategoryBands(model.labels.length, plot);
   const anchorX = selectedIndex !== null ? (touchBands[selectedIndex]?.centerX ?? 0) : 0;
+
+  // A tap toggles the in-chart tooltip AND (when wired) reports the point for
+  // the dashboard drill action sheet.
+  const onTouch = (index: number): void => {
+    toggleIndex(index);
+    if (onPointSelect) {
+      const info = buildPointSelectInfo(index, model.labels, model.series);
+      if (info) {
+        onPointSelect(info);
+      }
+    }
+  };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -187,7 +208,7 @@ export function BarChartView({
               width={band.width}
               height={plot.innerBottom - plot.innerTop}
               fill="transparent"
-              onPress={() => toggleIndex(band.index)}
+              onPress={() => onTouch(band.index)}
             />
           ))}
         </Svg>
