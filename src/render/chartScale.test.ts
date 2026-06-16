@@ -1,13 +1,15 @@
 import {
   abbreviateNumber,
   buildAreaPath,
+  buildAreaPathToBaseline,
   domainMax,
   domainMaxMulti,
   domainMinMulti,
-  getBarGeometry,
   getCategoryBands,
   getGroupedBarGeometry,
+  getGroupedBarGeometryForDomains,
   getLinePoints,
+  getLinePointsForDomain,
   getLinePointsWithMax,
   getPieSlices,
   getPlotArea,
@@ -16,7 +18,7 @@ import {
   paletteColor,
   pickAxisLabelIndices,
   pointsToString,
-  resolveSeriesColor,
+  splitLineSegments,
   truncateLabel,
   valueToXRange,
   valueToY,
@@ -135,26 +137,6 @@ describe('valueToXRange', () => {
   it('handles a degenerate domain without dividing by zero', () => {
     const plot = getPlotArea(320, 220);
     expect(Number.isFinite(valueToXRange(5, 5, 5, plot))).toBe(true);
-  });
-});
-
-describe('getBarGeometry', () => {
-  it('produces one bar per value, tallest bar at the max', () => {
-    const plot = getPlotArea(320, 220);
-    const bars = getBarGeometry([10, 25, 18], plot);
-    expect(bars).toHaveLength(3);
-    const heights = bars.map((b) => b.height);
-    // bar[1] is the max → tallest.
-    expect(heights[1]).toBeGreaterThan(heights[0]!);
-    expect(heights[1]).toBeGreaterThan(heights[2]!);
-    bars.forEach((b) => {
-      expect(b.width).toBeGreaterThan(0);
-      expect(b.y + b.height).toBeCloseTo(plot.innerBottom);
-    });
-  });
-
-  it('returns an empty array for no values', () => {
-    expect(getBarGeometry([], getPlotArea())).toEqual([]);
   });
 });
 
@@ -350,17 +332,6 @@ describe('pickAxisLabelIndices', () => {
   });
 });
 
-describe('resolveSeriesColor', () => {
-  it('honors a color from series_settings', () => {
-    const viz = { series_settings: { revenue: { color: '#abcdef' } } };
-    expect(resolveSeriesColor(viz, 'revenue', '#000')).toBe('#abcdef');
-  });
-
-  it('falls back when no color is present', () => {
-    expect(resolveSeriesColor({}, 'revenue', '#123456')).toBe('#123456');
-  });
-});
-
 describe('CHART_PADDING', () => {
   it('reserves room on the left for the y-axis labels', () => {
     // ~44px so the abbreviated value labels (e.g. "2.5M") never clip.
@@ -502,5 +473,154 @@ describe('getRowBarGeometry', () => {
   it('returns an empty array for no series or no labels', () => {
     expect(getRowBarGeometry([], 3, plot, 0, 10)).toEqual([]);
     expect(getRowBarGeometry([[1, 2]], 0, plot, 0, 10)).toEqual([]);
+  });
+});
+
+describe('getGroupedBarGeometryForDomains', () => {
+  const plot = getPlotArea(320, 220);
+
+  it('produces one bar per series per label using per-series domains', () => {
+    const series = [
+      { values: [10, 50], min: 0, max: 50 },
+      { values: [1, 5], min: 0, max: 5 },
+    ];
+    const bars = getGroupedBarGeometryForDomains(series, 2, plot);
+    // 2 series × 2 labels = 4 bars.
+    expect(bars).toHaveLength(4);
+    // Both series' max values should reach the top of the plot (innerTop).
+    const s0label1 = bars.find((b) => b.seriesIndex === 0 && b.labelIndex === 1);
+    const s1label1 = bars.find((b) => b.seriesIndex === 1 && b.labelIndex === 1);
+    expect(s0label1?.y).toBeCloseTo(plot.innerTop, 0);
+    expect(s1label1?.y).toBeCloseTo(plot.innerTop, 0);
+  });
+
+  it('produces a zero-height bar for null/non-finite values', () => {
+    const series = [{ values: [null, 10], min: 0, max: 10 }];
+    const bars = getGroupedBarGeometryForDomains(series, 2, plot);
+    expect(bars[0]?.height).toBe(0);
+    expect(bars[1]?.height).toBeGreaterThan(0);
+  });
+
+  it('returns an empty array for no series or no labels', () => {
+    expect(getGroupedBarGeometryForDomains([], 3, plot)).toEqual([]);
+    expect(getGroupedBarGeometryForDomains([{ values: [1], min: 0, max: 1 }], 0, plot)).toEqual([]);
+  });
+
+  it('bars within the same label band are side-by-side (no x overlap)', () => {
+    const series = [
+      { values: [5], min: 0, max: 10 },
+      { values: [8], min: 0, max: 10 },
+    ];
+    const bars = getGroupedBarGeometryForDomains(series, 1, plot);
+    expect(bars).toHaveLength(2);
+    // series 1's bar starts at or after the right edge of series 0's bar.
+    expect(bars[1]!.x).toBeGreaterThanOrEqual(bars[0]!.x + bars[0]!.width - 0.001);
+  });
+});
+
+describe('getLinePointsForDomain', () => {
+  const plot = getPlotArea(320, 220);
+
+  it('spans edge-to-edge for multiple points', () => {
+    const pts = getLinePointsForDomain([0, 5, 10], plot, 0, 10);
+    expect(pts).toHaveLength(3);
+    expect(pts[0]!.x).toBeCloseTo(plot.innerLeft);
+    expect(pts[2]!.x).toBeCloseTo(plot.innerRight);
+  });
+
+  it('centers a single point and maps its value correctly', () => {
+    const pts = getLinePointsForDomain([5], plot, 0, 10);
+    expect(pts).toHaveLength(1);
+    expect(pts[0]!.x).toBeCloseTo(plot.innerLeft + plot.innerWidth / 2);
+    // 5/10 = halfway up → y is midway between innerBottom and innerTop.
+    expect(pts[0]!.y).toBeCloseTo((plot.innerTop + plot.innerBottom) / 2);
+  });
+
+  it('null values produce a gap (y === null)', () => {
+    const pts = getLinePointsForDomain([1, null, 3], plot, 0, 10);
+    expect(pts[1]?.y).toBeNull();
+    expect(pts[0]?.y).not.toBeNull();
+    expect(pts[2]?.y).not.toBeNull();
+  });
+
+  it('returns an empty array for no values', () => {
+    expect(getLinePointsForDomain([], plot, 0, 10)).toEqual([]);
+  });
+});
+
+describe('splitLineSegments', () => {
+  it('returns a single run when there are no gaps', () => {
+    const pts = [
+      { x: 0, y: 1 },
+      { x: 1, y: 2 },
+      { x: 2, y: 3 },
+    ];
+    const runs = splitLineSegments(pts);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toHaveLength(3);
+  });
+
+  it('splits on null y values and discards the gap', () => {
+    const pts = [
+      { x: 0, y: 1 },
+      { x: 1, y: null },
+      { x: 2, y: 3 },
+    ];
+    const runs = splitLineSegments(pts);
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toHaveLength(1);
+    expect(runs[1]).toHaveLength(1);
+  });
+
+  it('includes single-point runs (so the caller can draw the dot)', () => {
+    const pts = [{ x: 0, y: 5 }];
+    const runs = splitLineSegments(pts);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toHaveLength(1);
+  });
+
+  it('handles leading and trailing null gaps', () => {
+    const pts = [
+      { x: 0, y: null },
+      { x: 1, y: 2 },
+      { x: 2, y: 3 },
+      { x: 3, y: null },
+    ];
+    const runs = splitLineSegments(pts);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toHaveLength(2);
+  });
+
+  it('returns an empty array when all points are null', () => {
+    const pts = [
+      { x: 0, y: null },
+      { x: 1, y: null },
+    ];
+    expect(splitLineSegments(pts)).toEqual([]);
+  });
+});
+
+describe('buildAreaPathToBaseline', () => {
+  const plot = getPlotArea(320, 220);
+
+  it('starts with a move (M) and ends closed (Z)', () => {
+    const pts = [
+      { x: 0, y: 10 },
+      { x: 100, y: 20 },
+    ];
+    const d = buildAreaPathToBaseline(pts, 100);
+    expect(d.startsWith('M')).toBe(true);
+    expect(d.trimEnd().endsWith('Z')).toBe(true);
+  });
+
+  it('drops to the explicit baseline y (not plot.innerBottom)', () => {
+    const pts = getLinePoints([5, 10], plot);
+    const customBaseline = 150;
+    const d = buildAreaPathToBaseline(pts, customBaseline);
+    expect(d).toContain(String(customBaseline));
+  });
+
+  it('returns empty string with no points', () => {
+    expect(buildAreaPathToBaseline([], 100)).toBe('');
   });
 });

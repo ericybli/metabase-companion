@@ -46,7 +46,7 @@ export function LineChartView({
   const theme = useTheme();
   const { t } = useTranslation();
   const [width, setWidth] = useState(DEFAULT_CHART_WIDTH);
-  const { selectedIndex, toggleIndex } = useChartTooltip();
+  const { selectedIndex, toggleIndex, clear } = useChartTooltip();
 
   // Base model (nothing hidden) gives a stable series count for the hook.
   const baseModel = useMemo(
@@ -109,6 +109,15 @@ export function LineChartView({
       ) : null}
       <View>
         <Svg width={width} height={height}>
+          {/* Background tap target — clears the tooltip when tapping empty space. */}
+          <Rect
+            x={plot.innerLeft}
+            y={plot.innerTop}
+            width={plot.innerWidth}
+            height={plot.innerBottom - plot.innerTop}
+            fill="transparent"
+            onPress={clear}
+          />
           <ChartYAxis
             min={left.min}
             max={left.max}
@@ -173,6 +182,7 @@ export function LineChartView({
             <Rect
               key={`touch-${band.index}`}
               testID={`chart-touch-${band.index}`}
+              accessibilityLabel={model.labels[band.index] ?? String(band.index)}
               x={band.x}
               y={plot.innerTop}
               width={band.width}

@@ -12,6 +12,7 @@ import {
   valueToYRange,
   yAxisTicks,
 } from '@/render/chartScale';
+import { formatNumber as fmtNum } from '@/viz/format';
 import { bubbleRadius, buildScatterModel } from '@/viz/model/scatterModel';
 import { ChartLegend } from './ChartLegend';
 import { ChartYAxis } from './ChartYAxis';
@@ -148,6 +149,7 @@ export function ScatterChartView({
                   <Circle
                     key={`pt-${si}-${pi}`}
                     testID={`scatter-point-${si}-${pi}`}
+                    accessibilityLabel={`${s.name} x: ${formatNumber(p.x)} y: ${formatNumber(p.y)}`}
                     cx={valueToXRange(p.x, x.min, x.max, plot)}
                     cy={valueToYRange(p.y, y.min, y.max, plot)}
                     r={bubbleRadius(p.size, model.sizeExtent)}
@@ -213,7 +215,11 @@ function formatNumber(n: number): string {
   if (!Number.isFinite(n)) {
     return '—';
   }
-  return n.toLocaleString();
+  try {
+    return fmtNum(n);
+  } catch {
+    return String(n);
+  }
 }
 
 const styles = StyleSheet.create({

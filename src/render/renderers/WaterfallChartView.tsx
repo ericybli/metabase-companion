@@ -11,6 +11,7 @@ import {
   truncateLabel,
   valueToYRange,
 } from '@/render/chartScale';
+import { formatNumber as fmtNum } from '@/viz/format';
 import {
   buildWaterfallModel,
   waterfallColors,
@@ -140,6 +141,7 @@ export function WaterfallChartView({
             <Rect
               key={`touch-${bar.index}`}
               testID={`chart-touch-${bar.index}`}
+              accessibilityLabel={bar.step.label}
               x={plot.innerLeft + bar.index * bandWidth}
               y={plot.innerTop}
               width={bandWidth}
@@ -200,7 +202,11 @@ function formatNumber(n: number): string {
   if (!Number.isFinite(n)) {
     return '—';
   }
-  return n.toLocaleString();
+  try {
+    return fmtNum(n);
+  } catch {
+    return String(n);
+  }
 }
 
 const styles = StyleSheet.create({

@@ -212,26 +212,13 @@ function formatMetric(value: number, col: QueryColumn, compact: boolean): string
  */
 function buildComparison(
   current: number,
-  previous: number | null,
+  previous: number,
   previousDim: unknown,
   metricCol: QueryColumn,
   dimCol: QueryColumn,
   switchSign: boolean,
 ): TrendComparison {
   const comparisonLabel = `vs. ${formatValue(previousDim, dimCol)}`;
-
-  if (previous === null) {
-    return {
-      changeType: 'previous-missing',
-      direction: 'flat',
-      previousValue: null,
-      delta: null,
-      percentChange: null,
-      deltaText: 'N/A',
-      percentText: 'N/A',
-      comparisonLabel,
-    };
-  }
 
   const percentChange = computePercentChange(current, previous);
   const delta = current - previous;
@@ -249,7 +236,7 @@ function buildComparison(
     };
   }
 
-  // Raw direction the metric moved.
+  // Raw direction the metric moved (up or down; flat is handled above).
   const rawDirection = directionOf(percentChange);
   // The visible direction (arrow + color semantics) can be inverted when
   // "down is good" (e.g. costs/churn) via switch_positive_negative.

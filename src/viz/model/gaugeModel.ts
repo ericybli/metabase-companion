@@ -190,11 +190,9 @@ export function buildGaugeModel(
     parsed = [{ min: 0, max, color: paletteColor(0), label: '' }];
   }
 
-  const first = parsed[0];
-  const last = parsed[parsed.length - 1];
-  // parsed is non-empty here, so first/last are defined.
-  const rangeMin = first ? first.min : 0;
-  const rangeMax = last ? last.max : 1;
+  // parsed is non-empty here (guaranteed by the fallback above).
+  const rangeMin = parsed[0]!.min;
+  const rangeMax = parsed[parsed.length - 1]!.max;
 
   const segments: GaugeSegment[] = parsed.map((p) => ({
     ...p,

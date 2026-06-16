@@ -1,5 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/ui/i18n';
 import { useTheme } from '@/ui/ThemeProvider';
 
 export interface DatePickerProps {
@@ -11,7 +13,8 @@ export interface DatePickerProps {
   placeholder?: string;
 }
 
-const MONTH_NAMES = [
+/** Fallback month names (en) used when Intl is unavailable. */
+const MONTH_NAMES_FALLBACK = [
   'January',
   'February',
   'March',
@@ -26,7 +29,37 @@ const MONTH_NAMES = [
   'December',
 ] as const;
 
-const WEEKDAY_NAMES = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+/** Fallback weekday initials (Sun…Sat, en) used when Intl is unavailable. */
+const WEEKDAY_NAMES_FALLBACK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+
+/**
+ * Get the 12 localized month names (long form) for the current i18n locale via
+ * `Intl.DateTimeFormat`. Falls back to English when Intl is unavailable.
+ */
+function getLocalizedMonthNames(locale: string): readonly string[] {
+  try {
+    const fmt = new Intl.DateTimeFormat(locale, { month: 'long' });
+    // Months 0-11: use a reference year (2000) so the day is well-defined.
+    return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2000, i, 1)));
+  } catch {
+    return MONTH_NAMES_FALLBACK;
+  }
+}
+
+/**
+ * Get the 7 localized weekday initials (narrow form, Sun…Sat) for the current
+ * i18n locale via `Intl.DateTimeFormat`. Falls back to English when Intl is
+ * unavailable.
+ */
+function getLocalizedWeekdayNames(locale: string): readonly string[] {
+  try {
+    const fmt = new Intl.DateTimeFormat(locale, { weekday: 'narrow' });
+    // 2000-01-02 is a Sunday; iterate 7 consecutive days.
+    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2000, 0, 2 + i)));
+  } catch {
+    return WEEKDAY_NAMES_FALLBACK;
+  }
+}
 
 interface YearMonth {
   year: number;
@@ -89,8 +122,14 @@ function stepMonth(ym: YearMonth, delta: number): YearMonth {
  */
 export function DatePicker({ value, onChange, placeholder }: DatePickerProps): React.ReactElement {
   const theme = useTheme();
+  const { i18n: i18nHook } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const [visible, setVisible] = React.useState<YearMonth>(() => initialMonth(value));
+
+  // Localized month and weekday names derived from the current language via Intl.
+  const locale = i18nHook.language ?? i18n.language ?? 'en';
+  const monthNames = getLocalizedMonthNames(locale);
+  const weekdayNames = getLocalizedWeekdayNames(locale);
 
   // Re-seed the visible month whenever the picker is (re)opened so it lands on
   // the currently-selected date.
@@ -155,7 +194,7 @@ export function DatePicker({ value, onChange, placeholder }: DatePickerProps): R
                 <Text style={[styles.navText, { color: theme.colors.primary }]}>‹</Text>
               </Pressable>
               <Text style={[styles.title, { color: theme.colors.text }]}>
-                {`${MONTH_NAMES[visible.month]} ${visible.year}`}
+                {`${monthNames[visible.month] ?? MONTH_NAMES_FALLBACK[visible.month] ?? ''} ${visible.year}`}
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -169,7 +208,7 @@ export function DatePicker({ value, onChange, placeholder }: DatePickerProps): R
             </View>
 
             <View style={styles.weekRow}>
-              {WEEKDAY_NAMES.map((w, i) => (
+              {weekdayNames.map((w, i) => (
                 <Text key={`wd-${i}`} style={[styles.weekday, { color: theme.colors.textMuted }]}>
                   {w}
                 </Text>
@@ -186,10 +225,13 @@ export function DatePicker({ value, onChange, placeholder }: DatePickerProps): R
                   selected.year === visible.year &&
                   selected.month === visible.month &&
                   selected.day === day;
+                const monthLabel =
+                  monthNames[visible.month] ?? MONTH_NAMES_FALLBACK[visible.month] ?? '';
                 return (
                   <Pressable
                     key={`day-${day}`}
                     accessibilityRole="button"
+                    accessibilityLabel={`${day} ${monthLabel} ${visible.year}`}
                     onPress={() => selectDay(day)}
                     style={[
                       styles.cell,

@@ -25,8 +25,6 @@ export interface ChartYAxisProps {
    * them) so the two axes never overlap.
    */
   side?: YAxisSide;
-  /** Optional tint applied to the axis labels (e.g. when a side has one series). */
-  tickColor?: string;
 }
 
 /**
@@ -48,11 +46,10 @@ export function ChartYAxis({
   labelColor,
   tickCount,
   side = 'left',
-  tickColor,
 }: ChartYAxisProps): React.ReactElement {
   const ticks = yAxisTicks(min, max, tickCount);
   const isRight = side === 'right';
-  const fill = tickColor ?? labelColor;
+  const fill = labelColor;
   return (
     <G>
       {ticks.map((value, i) => {

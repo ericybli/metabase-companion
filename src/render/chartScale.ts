@@ -197,28 +197,6 @@ export interface BarGeometry {
   centerX: number;
 }
 
-/**
- * Compute evenly spaced bar rectangles across the plot area.
- * Each value occupies a band; the bar fills 70% of its band, centered.
- */
-export function getBarGeometry(values: number[], plot: PlotArea): BarGeometry[] {
-  const count = values.length;
-  if (count === 0) {
-    return [];
-  }
-  const max = domainMax(values);
-  const bandWidth = plot.innerWidth / count;
-  const barWidth = Math.max(1, bandWidth * 0.7);
-  return values.map((value, i) => {
-    const bandStart = plot.innerLeft + i * bandWidth;
-    const centerX = bandStart + bandWidth / 2;
-    const x = centerX - barWidth / 2;
-    const y = valueToY(Math.max(0, value), max, plot);
-    const height = Math.max(0, plot.innerBottom - y);
-    return { x, y, width: barWidth, height, centerX };
-  });
-}
-
 export interface GroupedBar extends BarGeometry {
   /** Index of the series this bar belongs to (for palette color lookup). */
   seriesIndex: number;
@@ -784,26 +762,4 @@ export function pickAxisLabelIndices(count: number, max: number = MAX_AXIS_LABEL
     picked.add(Math.round((i * last) / (cap - 1)));
   }
   return Array.from(picked).sort((a, b) => a - b);
-}
-
-/**
- * Resolve a single-series color: honor a string color from vizSettings when
- * trivially available, otherwise fall back to the provided theme color.
- */
-export function resolveSeriesColor(
-  vizSettings: Record<string, unknown>,
-  metricName: string,
-  fallback: string,
-): string {
-  const colors = vizSettings['series_settings'];
-  if (colors && typeof colors === 'object') {
-    const entry = (colors as Record<string, unknown>)[metricName];
-    if (entry && typeof entry === 'object') {
-      const color = (entry as Record<string, unknown>).color;
-      if (typeof color === 'string' && color.length > 0) {
-        return color;
-      }
-    }
-  }
-  return fallback;
 }

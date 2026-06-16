@@ -209,7 +209,6 @@ export function serializeDateParam(value: DateFilterValue): string {
           return `${first}~${serializeDateParts(d1, value.hasTime)}`;
         }
       }
-      return first;
     }
     case 'month':
       return `${pad4(value.year)}-${pad2(value.month)}`;
@@ -544,7 +543,6 @@ export function dateParamLabel(value: DateFilterValue | string): string {
           return `${first} – ${formatSpecificDate(d1, v.hasTime)}`;
         }
       }
-      return first;
     }
     case 'month': {
       const name = MONTH_NAMES[v.month - 1] ?? String(v.month);
