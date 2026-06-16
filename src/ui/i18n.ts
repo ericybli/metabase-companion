@@ -68,6 +68,7 @@ export const resources = {
         waterfallStep: 'Step',
         waterfallCumulative: 'Total so far',
         waterfallTotal: 'Total',
+        pieTotal: 'Total',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -142,6 +143,7 @@ export const resources = {
         waterfallStep: '本步',
         waterfallCumulative: '累计',
         waterfallTotal: '合计',
+        pieTotal: '合计',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',
