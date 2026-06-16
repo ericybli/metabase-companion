@@ -126,9 +126,40 @@ describe('CardView registry', () => {
     expect(screen.getByText('Acme')).toBeTruthy();
   });
 
-  it('routes pivot to TableView', async () => {
+  it('routes pivot without config to the flat table fallback', async () => {
     await render(<CardView display="pivot" result={tableResult} vizSettings={{}} name="Custs" />);
     expect(screen.getByText('Customer')).toBeTruthy();
+  });
+
+  it('routes pivot with a column split to PivotTableView (reshaped grid)', async () => {
+    const pivotResult: QueryResult = {
+      rows: [
+        ['West', '2023', 100],
+        ['East', '2023', 80],
+      ],
+      cols: [
+        { name: 'Region', displayName: 'Region', baseType: 'type/Text', semanticType: null },
+        { name: 'Year', displayName: 'Year', baseType: 'type/Text', semanticType: null },
+        { name: 'Total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(
+      <CardView
+        display="pivot"
+        result={pivotResult}
+        vizSettings={{
+          'pivot_table.column_split': { rows: ['Region'], columns: ['Year'], values: ['Total'] },
+        }}
+        name="Sales"
+      />,
+    );
+    // Year value becomes a column header; region values become row headers.
+    expect(screen.getByText('2023')).toBeTruthy();
+    expect(screen.getByText('West')).toBeTruthy();
+    expect(screen.getByText('East')).toBeTruthy();
   });
 
   it('routes bar to BarChartView (shows the metric title)', async () => {

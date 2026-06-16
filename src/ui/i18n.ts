@@ -73,6 +73,7 @@ export const resources = {
         waterfallTotal: 'Total',
         pieTotal: 'Total',
         scatterSize: 'Size',
+        pivotGrandTotal: 'Grand total',
       },
       errors: {
         invalidUrl: 'That URL doesn’t look right.',
@@ -152,6 +153,7 @@ export const resources = {
         waterfallTotal: '合计',
         pieTotal: '合计',
         scatterSize: '大小',
+        pivotGrandTotal: '总计',
       },
       errors: {
         invalidUrl: '该地址格式不正确。',
