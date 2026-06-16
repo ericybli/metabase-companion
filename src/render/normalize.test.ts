@@ -288,6 +288,17 @@ describe('toChartData', () => {
       const data = toChartData(result, {});
       expect(data?.labels).toEqual(['Alpha', 'Beta']);
     });
+
+    it('surfaces the resolved dimension column name', () => {
+      const result = makeResult(
+        [labelCol, countCol],
+        [
+          ['Alpha', 5],
+          ['Beta', 15],
+        ],
+      );
+      expect(toChartData(result, {})?.dimensionColumnName).toBe('label');
+    });
   });
 
   describe('multiple numeric columns', () => {

@@ -116,6 +116,7 @@ describe('endpoints', () => {
           display: 'line',
           vizSettings: {},
           tabId: null,
+          parameterMappings: [],
         },
       ],
       parameters: [],

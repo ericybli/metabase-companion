@@ -135,7 +135,8 @@ export function PieChartView({
           values: model.slices.map((s) => s.value),
         },
       ];
-      const info = buildPointSelectInfo(index, labels, series);
+      const dimension = model.dimensionColumnName ? { name: model.dimensionColumnName } : undefined;
+      const info = buildPointSelectInfo(index, labels, series, dimension);
       if (info) {
         onPointSelect(info);
       }

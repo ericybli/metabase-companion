@@ -104,6 +104,17 @@ export interface DashboardTab {
   name: string;
 }
 
+/**
+ * One per-dashcard mapping that connects a dashboard parameter to a column/field
+ * on this card. Parsed from each dashcard's `parameter_mappings` entries
+ * (`{ parameter_id, card_id, target }`); `target` is Metabase's dimension/
+ * variable reference, kept as `unknown` for the cross-filter resolver to inspect.
+ */
+export interface DashboardCardParameterMapping {
+  parameterId: string;
+  target: unknown;
+}
+
 export interface DashboardCard {
   dashcardId: number;
   cardId: number;
@@ -111,6 +122,11 @@ export interface DashboardCard {
   display: string | null;
   vizSettings: Record<string, unknown>;
   tabId: number | null;
+  /**
+   * Parameter→column mappings for THIS card, used to resolve which dashboard
+   * parameter a clicked dimension cross-filters. `[]` when the card has none.
+   */
+  parameterMappings: DashboardCardParameterMapping[];
 }
 
 /** A dashboard filter/parameter as returned by GET /api/dashboard/:id. */
@@ -201,11 +217,20 @@ export const QueryResultSchema = z
     }),
   );
 
+const DashcardParameterMappingSchema = z
+  .object({
+    parameter_id: z.string().optional(),
+    card_id: z.number().nullable().optional(),
+    target: z.unknown().optional(),
+  })
+  .passthrough();
+
 const DashcardSchema = z
   .object({
     id: z.number(),
     card_id: z.number().nullable().optional(),
     dashboard_tab_id: z.number().nullable().optional(),
+    parameter_mappings: z.array(DashcardParameterMappingSchema).nullable().optional(),
     card: z
       .object({
         id: z.number().optional(),
@@ -282,6 +307,9 @@ export const DashboardDetailSchema = z
         display: dc.card?.display ?? null,
         vizSettings: dc.card?.visualization_settings ?? {},
         tabId: dc.dashboard_tab_id ?? null,
+        parameterMappings: (dc.parameter_mappings ?? [])
+          .filter((m): m is typeof m & { parameter_id: string } => m.parameter_id != null)
+          .map((m) => ({ parameterId: m.parameter_id, target: m.target })),
       }));
     const parameters: DashboardParameter[] = raw.parameters ?? [];
     const rawTabs = raw.tabs ?? [];

@@ -159,6 +159,7 @@ describe('RowChartView', () => {
         { name: 'Sold', value: 25 },
         { name: 'Returned', value: 12 },
       ],
+      dimensionColumnName: 'fruit',
     });
   });
 

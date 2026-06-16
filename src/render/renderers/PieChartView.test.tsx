@@ -106,6 +106,7 @@ describe('PieChartView', () => {
       index: 1,
       label: 'B',
       points: [{ name: 'Sales', value: 30 }],
+      dimensionColumnName: 'category',
     });
   });
 
@@ -123,6 +124,7 @@ describe('PieChartView', () => {
       index: 0,
       label: 'A',
       points: [{ name: 'Sales', value: 40 }],
+      dimensionColumnName: 'category',
     });
   });
 

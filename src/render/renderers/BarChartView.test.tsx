@@ -175,6 +175,7 @@ describe('BarChartView', () => {
         { name: 'Total', value: 25 },
         { name: 'Returns', value: 12 },
       ],
+      dimensionColumnName: 'month',
     });
   });
 

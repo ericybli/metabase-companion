@@ -52,6 +52,12 @@ export function toRecords(result: QueryResult): Record<string, unknown>[] {
 export interface ChartData {
   labels: string[];
   series: { name: string; values: number[] }[];
+  /**
+   * Name of the resolved dimension (x / category) column (`QueryColumn.name`),
+   * used by the dashboard cross-filter to map a clicked category back to a
+   * dashboard parameter. Undefined when no dimension column could be resolved.
+   */
+  dimensionColumnName?: string;
 }
 
 /**
@@ -135,5 +141,5 @@ export function toChartData(
     return { name: metricCol.displayName, values };
   });
 
-  return { labels, series };
+  return { labels, series, dimensionColumnName: resolvedDimensionCol?.name };
 }

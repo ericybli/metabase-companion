@@ -63,6 +63,12 @@ export interface CartesianModel {
   right: AxisDomain | null;
   /** True iff BOTH axes carry at least one visible series. */
   hasSplit: boolean;
+  /**
+   * Name of the resolved dimension (x / category) column (`QueryColumn.name`),
+   * passed through to the drill cross-filter so a clicked category maps back to a
+   * dashboard parameter. Undefined when no dimension column resolved.
+   */
+  dimensionColumnName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -678,5 +684,6 @@ export function buildCartesianModel(
     left,
     right,
     hasSplit,
+    dimensionColumnName: chart.dimensionColumnName,
   };
 }

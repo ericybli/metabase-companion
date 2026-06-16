@@ -160,7 +160,8 @@ export function ComboChartView({
   const onTouch = (index: number): void => {
     toggleIndex(index);
     if (onPointSelect) {
-      const info = buildPointSelectInfo(index, model.labels, model.series);
+      const dimension = model.dimensionColumnName ? { name: model.dimensionColumnName } : undefined;
+      const info = buildPointSelectInfo(index, model.labels, model.series, dimension);
       if (info) {
         onPointSelect(info);
       }

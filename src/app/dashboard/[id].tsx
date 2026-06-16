@@ -29,6 +29,7 @@ import type { DashboardCard, DashboardParameter, DashboardTab } from '@/api/sche
 import { useInstancesStore } from '@/store/instances';
 import { CardView } from '@/render/CardView';
 import { settableFilterParams, type PointSelectInfo } from '@/viz/drill/pointSelect';
+import { resolveCrossfilterParam } from '@/viz/drill/crossfilter';
 import { FiltersBar } from './FiltersBar';
 
 type InstancesState = { activeInstanceId: string | null };
@@ -99,11 +100,20 @@ export default function DashboardScreen() {
 
   const cardParams = React.useMemo(() => toCardParams(paramValues), [paramValues]);
 
-  // Cross-filter: set a dashboard parameter to the clicked point's label, then
+  // Cross-filter: set a dashboard parameter to the clicked point's value, then
   // close the drill sheet so the connected cards refetch with the new value.
-  // (Read-only: this only mutates parameterValues — no navigation, no new query.)
+  // Toggle-clear (P5 §3.5): tapping a value the parameter is already set to
+  // clears it instead of re-setting it. (Read-only: this only mutates
+  // parameterValues — no navigation, no new query.)
   const applyCrossFilter = React.useCallback((paramId: string, value: string): void => {
-    setParamValues((prev) => ({ ...prev, [paramId]: value }));
+    setParamValues((prev) => {
+      if (prev[paramId] === value) {
+        const next = { ...prev };
+        delete next[paramId];
+        return next;
+      }
+      return { ...prev, [paramId]: value };
+    });
     setDrill(null);
   }, []);
 
@@ -230,6 +240,7 @@ export default function DashboardScreen() {
       <DrillSheet
         drill={drill}
         parameters={parameters}
+        paramValues={paramValues}
         onApplyFilter={applyCrossFilter}
         onClose={() => setDrill(null)}
       />
@@ -240,27 +251,57 @@ export default function DashboardScreen() {
 /**
  * Drill-through bottom action sheet shown when a chart point is tapped. It always
  * surfaces the clicked point's details — the dimension label and one row per
- * series ("{name}: {value}") — and, when the dashboard has at least one settable
- * (string/category/id) parameter, offers a one-tap "Filter: {param} = {label}"
- * per such parameter. Tapping a Filter button writes the clicked dimension label
- * into that parameter (cross-filter) and dismisses the sheet so connected cards
- * refetch. With no settable parameter it is a read-only details view.
+ * series ("{name}: {value}").
+ *
+ * For the FILTER action it prefers PRECISION: if the tapped card's
+ * `parameter_mappings` connect the clicked dimension column to a dashboard
+ * parameter ({@link resolveCrossfilterParam}), it offers a single primary
+ * "Filter: {param} = {label}" that sets THAT exact parameter — matching
+ * Metabase's auto cross-filter. Tapping it again (value already set) clears it
+ * (toggle, handled by the caller). Only when no mapping resolves does it fall
+ * back to the generic, less-precise list of settable string/category/id
+ * parameters. With nothing to filter it is a read-only details view.
  */
 function DrillSheet({
   drill,
   parameters,
+  paramValues,
   onApplyFilter,
   onClose,
 }: {
   drill: DrillTarget | null;
   parameters: DashboardParameter[];
+  paramValues: Record<string, unknown>;
   onApplyFilter: (paramId: string, value: string) => void;
   onClose: () => void;
 }): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const filterable = React.useMemo(() => settableFilterParams(parameters), [parameters]);
+
+  // Precise mapping: resolve the clicked dimension column → the EXACT dashboard
+  // parameter via this card's parameter_mappings. Null when the card has no
+  // mapping for the clicked column (then we fall back to the generic list).
+  const mappedParam = React.useMemo(() => {
+    if (!drill?.info.dimensionColumnName) return null;
+    const paramId = resolveCrossfilterParam(
+      { name: drill.info.dimensionColumnName, fieldId: drill.info.dimensionFieldId },
+      (drill.card.parameterMappings ?? []).map((m) => ({
+        parameterId: m.parameterId,
+        cardId: drill.card.cardId,
+        target: m.target,
+      })),
+      parameters,
+    );
+    if (!paramId) return null;
+    return parameters.find((p) => p.id === paramId) ?? null;
+  }, [drill, parameters]);
+
+  // Generic fallback: only when no precise mapping resolved.
+  const filterable = React.useMemo(
+    () => (mappedParam ? [] : settableFilterParams(parameters)),
+    [mappedParam, parameters],
+  );
 
   return (
     <Modal visible={drill != null} animationType="slide" transparent onRequestClose={onClose}>
@@ -299,6 +340,26 @@ function DrillSheet({
                   {p.name}: {p.value}
                 </Text>
               ))}
+              {mappedParam != null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  testID={`drill-filter-${mappedParam.id}`}
+                  onPress={() => onApplyFilter(mappedParam.id, drill.info.label)}
+                  style={[
+                    styles.drillFilterButton,
+                    { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm },
+                  ]}
+                >
+                  <Text style={styles.drillFilterText} numberOfLines={1}>
+                    {paramValues[mappedParam.id] === drill.info.label
+                      ? t('dashboard.clearFilter', { name: mappedParam.name })
+                      : t('dashboard.filterBy', {
+                          name: mappedParam.name,
+                          value: drill.info.label,
+                        })}
+                  </Text>
+                </Pressable>
+              ) : null}
               {filterable.map((param) => (
                 <Pressable
                   key={`drill-filter-${param.id}`}

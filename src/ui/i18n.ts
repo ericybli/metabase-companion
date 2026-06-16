@@ -59,6 +59,7 @@ export const resources = {
         clear: 'Clear',
         pointDetails: 'Point details',
         filterBy: 'Filter: {{name}} = {{value}}',
+        clearFilter: 'Clear filter: {{name}}',
         close: 'Close',
       },
       chart: {
@@ -139,6 +140,7 @@ export const resources = {
         clear: '清除',
         pointDetails: '数据点详情',
         filterBy: '筛选：{{name}} = {{value}}',
+        clearFilter: '清除筛选：{{name}}',
         close: '关闭',
       },
       chart: {

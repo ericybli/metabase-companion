@@ -37,6 +37,15 @@ export interface PointSelectInfo {
   label: string;
   /** One entry per VISIBLE series that has a value at this x. */
   points: PointSeriesValue[];
+  /**
+   * Name of the tapped DIMENSION column (matches QueryColumn.name), when the
+   * renderer knows it. Used by the dashboard to resolve which dashboard parameter
+   * this click cross-filters (see crossfilter.ts `resolveCrossfilterParam`).
+   * Absent for charts with no categorical dimension (e.g. scatter).
+   */
+  dimensionColumnName?: string;
+  /** The dimension column's backing field id, when it carries one. */
+  dimensionFieldId?: number;
 }
 
 /**
@@ -49,6 +58,16 @@ export interface PointSelectSeries {
   hidden?: boolean;
 }
 
+/**
+ * Minimal description of the tapped dimension column, passed to
+ * {@link buildPointSelectInfo} so the resulting info carries the column name +
+ * field id for cross-filter resolution.
+ */
+export interface PointSelectDimension {
+  name: string;
+  fieldId?: number;
+}
+
 /** Coerce a possibly-null/non-finite series value to a finite number (0 fallback). */
 function toFiniteValue(value: number | null | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -59,11 +78,17 @@ function toFiniteValue(value: number | null | undefined): number {
  * and series. Hidden series are omitted (they aren't drawn, so they shouldn't be
  * reported). Returns null when the index is out of range, so a renderer can
  * safely ignore an invalid tap.
+ *
+ * Pass `dimension` (the tapped dimension column's name + optional field id) so
+ * the result can carry it for cross-filter parameter resolution; omit it for
+ * charts with no categorical dimension. The dimension keys are absent from the
+ * returned object when no column is provided.
  */
 export function buildPointSelectInfo(
   index: number,
   labels: readonly string[],
   series: readonly PointSelectSeries[],
+  dimension?: PointSelectDimension,
 ): PointSelectInfo | null {
   if (index < 0 || index >= labels.length) {
     return null;
@@ -76,7 +101,14 @@ export function buildPointSelectInfo(
     }
     points.push({ name: s.name, value: toFiniteValue(s.values[index]) });
   }
-  return { index, label, points };
+  const info: PointSelectInfo = { index, label, points };
+  if (dimension) {
+    info.dimensionColumnName = dimension.name;
+    if (dimension.fieldId != null) {
+      info.dimensionFieldId = dimension.fieldId;
+    }
+  }
+  return info;
 }
 
 // ---------------------------------------------------------------------------

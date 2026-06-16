@@ -192,7 +192,15 @@ describe('DashboardDetailSchema', () => {
       name: 'S',
       description: null,
       cards: [
-        { dashcardId: 1, cardId: 5, name: 'R', display: 'bar', vizSettings: {}, tabId: null },
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'R',
+          display: 'bar',
+          vizSettings: {},
+          tabId: null,
+          parameterMappings: [],
+        },
       ],
       parameters: [],
       tabs: [],
@@ -206,7 +214,15 @@ describe('DashboardDetailSchema', () => {
         ordered_cards: [{ id: 7, card_id: 8, card: { id: 8, name: 'Q', display: null } }],
       }).cards,
     ).toEqual([
-      { dashcardId: 7, cardId: 8, name: 'Q', display: null, vizSettings: {}, tabId: null },
+      {
+        dashcardId: 7,
+        cardId: 8,
+        name: 'Q',
+        display: null,
+        vizSettings: {},
+        tabId: null,
+        parameterMappings: [],
+      },
     ]);
   });
   it('captures visualization_settings from card when present', () => {
@@ -279,6 +295,46 @@ describe('DashboardDetailSchema', () => {
       dashcards: [{ id: 10, card_id: 100, card: { id: 100, name: 'CardA', display: 'bar' } }],
     });
     expect(result.cards[0]?.tabId).toBeNull();
+  });
+
+  it('parses parameter_mappings (parameter_id + target) on each dashcard', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 1,
+      name: 'T',
+      dashcards: [
+        {
+          id: 10,
+          card_id: 100,
+          parameter_mappings: [
+            {
+              parameter_id: 'p_state',
+              card_id: 100,
+              target: ['dimension', ['field', 42, { 'base-type': 'type/Text' }]],
+            },
+            { parameter_id: 'p_date', card_id: 100, target: ['dimension', ['field', 99, null]] },
+            // A mapping with no parameter_id is dropped.
+            { card_id: 100, target: ['dimension', ['field', 7, null]] },
+          ],
+          card: { id: 100, name: 'CardA', display: 'bar' },
+        },
+      ],
+    });
+    expect(result.cards[0]?.parameterMappings).toEqual([
+      {
+        parameterId: 'p_state',
+        target: ['dimension', ['field', 42, { 'base-type': 'type/Text' }]],
+      },
+      { parameterId: 'p_date', target: ['dimension', ['field', 99, null]] },
+    ]);
+  });
+
+  it('defaults parameterMappings to [] when parameter_mappings is absent', () => {
+    const result = DashboardDetailSchema.parse({
+      id: 1,
+      name: 'T',
+      dashcards: [{ id: 10, card_id: 100, card: { id: 100, name: 'CardA', display: 'bar' } }],
+    });
+    expect(result.cards[0]?.parameterMappings).toEqual([]);
   });
 
   it('parses parameters array with id, slug, name, type, and default', () => {

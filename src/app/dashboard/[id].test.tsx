@@ -665,6 +665,206 @@ describe('DashboardScreen', () => {
     expect(screen.queryByTestId('drill-close')).toBeNull();
   });
 
+  it('prefers the precisely-mapped parameter (by clicked column) over the generic list', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'By State',
+          display: 'bar',
+          vizSettings: {},
+          // The card's mapping connects the clicked `state` column (by name) to
+          // the p_region parameter — even though p_unrelated is also settable.
+          parameterMappings: [
+            { parameterId: 'p_region', target: ['dimension', ['field', 'state', null]] },
+          ],
+        },
+      ],
+      parameters: [
+        {
+          id: 'p_region',
+          slug: 'region',
+          name: 'Region',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+        {
+          id: 'p_unrelated',
+          slug: 'unrelated',
+          name: 'Unrelated',
+          type: 'category',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Tap the first column to open the drill sheet.
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+
+    // The PRECISE mapped parameter (p_region) is offered; the generic list is
+    // suppressed (no button for the unrelated settable parameter).
+    const mappedBtn = await screen.findByTestId('drill-filter-p_region');
+    expect(screen.getByText('Filter: Region = Wisconsin')).toBeTruthy();
+    expect(screen.queryByTestId('drill-filter-p_unrelated')).toBeNull();
+
+    // Tapping it sets the EXACT mapped parameter id and refetches.
+    fireEvent.press(mappedBtn);
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p_region', value: 'Wisconsin' },
+      ]),
+    );
+  });
+
+  it('toggle-clears the mapped parameter when the same value is tapped again', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'By State',
+          display: 'bar',
+          vizSettings: {},
+          parameterMappings: [
+            { parameterId: 'p_region', target: ['dimension', ['field', 'state', null]] },
+          ],
+        },
+      ],
+      parameters: [
+        {
+          id: 'p_region',
+          slug: 'region',
+          name: 'Region',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // First tap -> set the mapped parameter to Wisconsin and refetch.
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+    fireEvent.press(await screen.findByTestId('drill-filter-p_region'));
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p_region', value: 'Wisconsin' },
+      ]),
+    );
+
+    // Tap the same column/value again -> the button now offers to CLEAR it.
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+    expect(await screen.findByText('Clear filter: Region')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('drill-filter-p_region'));
+
+    // The parameter is cleared, so the card refetches with no parameter value.
+    await waitFor(() => expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, []));
+  });
+
+  it('falls back to the generic settable list when no mapping resolves for the clicked column', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'By State',
+          display: 'bar',
+          vizSettings: {},
+          // The mapping is for a DIFFERENT column (created_at), not the clicked
+          // `state` column -> no precise match -> generic fallback kicks in.
+          parameterMappings: [
+            { parameterId: 'p_when', target: ['dimension', ['field', 'created_at', null]] },
+          ],
+        },
+      ],
+      parameters: [
+        {
+          id: 'p_state',
+          slug: 'state',
+          name: 'State',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+
+    // No precise mapping for `state` -> the generic settable p_state is offered.
+    const genericBtn = await screen.findByTestId('drill-filter-p_state');
+    expect(screen.getByText('Filter: State = Wisconsin')).toBeTruthy();
+    fireEvent.press(genericBtn);
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p_state', value: 'Wisconsin' },
+      ]),
+    );
+  });
+
   it('renders the per-card error state with the ApiException kind when the query fails', async () => {
     mockGetDashboard.mockResolvedValue({
       id: 9,

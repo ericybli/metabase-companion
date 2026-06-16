@@ -43,6 +43,18 @@ describe('buildPointSelectInfo', () => {
     expect(buildPointSelectInfo(-1, labels, series)).toBeNull();
     expect(buildPointSelectInfo(3, labels, series)).toBeNull();
   });
+
+  it('carries the dimension column name when provided', () => {
+    const info = buildPointSelectInfo(0, labels, series, { name: 'created_at', fieldId: 7 });
+    expect(info?.dimensionColumnName).toBe('created_at');
+    expect(info?.dimensionFieldId).toBe(7);
+  });
+
+  it('omits the dimension column keys when no column is provided', () => {
+    const info = buildPointSelectInfo(0, labels, series);
+    expect(info).not.toHaveProperty('dimensionColumnName');
+    expect(info).not.toHaveProperty('dimensionFieldId');
+  });
 });
 
 describe('isSettableFilterParam', () => {

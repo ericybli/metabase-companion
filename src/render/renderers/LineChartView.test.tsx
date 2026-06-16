@@ -167,6 +167,7 @@ describe('LineChartView', () => {
         { name: 'Revenue', value: 25 },
         { name: 'Cost', value: 12 },
       ],
+      dimensionColumnName: 'month',
     });
   });
 
