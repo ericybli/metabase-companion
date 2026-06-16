@@ -15,6 +15,7 @@ import {
   type PlotArea,
 } from '@/render/chartScale';
 import { toChartData } from '@/render/normalize';
+import { buildPointSelectInfo, type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { ChartLegend } from './ChartLegend';
 import { ChartTooltip, useChartTooltip } from './ChartTooltip';
 import { useHiddenSeries } from './useHiddenSeries';
@@ -25,6 +26,13 @@ export interface RowChartViewProps {
   vizSettings: Record<string, unknown>;
   /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
   height?: number;
+  /**
+   * Optional drill-through callback. When provided, tapping a row band reports
+   * the tapped point (its index, category label, and each visible series' value)
+   * IN ADDITION to toggling the in-chart tooltip, so a dashboard can open a
+   * richer action sheet. Omitted -> only the tooltip is affected.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /** Inner padding (px) for the row chart: wider left gutter for category labels. */
@@ -102,6 +110,7 @@ export function RowChartView({
   result,
   vizSettings,
   height = CHART_HEIGHT,
+  onPointSelect,
 }: RowChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -159,6 +168,23 @@ export function RowChartView({
     name: s.name,
     values: (hidden[i] ?? false) ? [] : s.values,
   }));
+
+  // A tap toggles the in-chart tooltip AND (when wired) reports the point for
+  // the dashboard drill action sheet.
+  const onTouch = (index: number): void => {
+    toggleIndex(index);
+    if (onPointSelect) {
+      const pointSeries = chart.series.map((s, i) => ({
+        name: s.name,
+        values: s.values,
+        hidden: hidden[i] ?? false,
+      }));
+      const info = buildPointSelectInfo(index, labels, pointSeries);
+      if (info) {
+        onPointSelect(info);
+      }
+    }
+  };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -257,7 +283,7 @@ export function RowChartView({
               width={plot.innerWidth}
               height={band.height}
               fill="transparent"
-              onPress={() => toggleIndex(band.index)}
+              onPress={() => onTouch(band.index)}
             />
           ))}
         </Svg>

@@ -92,6 +92,40 @@ describe('PieChartView', () => {
     expect(screen.getAllByText('30').length).toBeGreaterThan(0);
   });
 
+  it('calls onPointSelect with the tapped slice info when a slice arc is tapped', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <PieChartView result={fourSlice} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+
+    // Tap the second slice (B = 30).
+    fireEvent.press(screen.getByTestId('pie-slice-1'));
+
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    expect(onPointSelect).toHaveBeenCalledWith({
+      index: 1,
+      label: 'B',
+      points: [{ name: 'Sales', value: 30 }],
+    });
+  });
+
+  it('calls onPointSelect with the tapped slice info when a legend row is tapped', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <PieChartView result={fourSlice} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+
+    // Tap the first legend row (A = 40).
+    fireEvent.press(screen.getByTestId('pie-legend-0'));
+
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    expect(onPointSelect).toHaveBeenCalledWith({
+      index: 0,
+      label: 'A',
+      points: [{ name: 'Sales', value: 40 }],
+    });
+  });
+
   it('shows no-data when there is no numeric metric column', async () => {
     const r: QueryResult = {
       rows: [['a'], ['b']],

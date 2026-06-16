@@ -142,6 +142,26 @@ describe('RowChartView', () => {
     expect(screen.getByText('No data')).toBeTruthy();
   });
 
+  it('calls onPointSelect with the tapped band info when a row is tapped', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <RowChartView result={twoSeries} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+
+    // Tap the second category row (Bananas: Sold=25, Returned=12).
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    expect(onPointSelect).toHaveBeenCalledWith({
+      index: 1,
+      label: 'Bananas',
+      points: [
+        { name: 'Sold', value: 25 },
+        { name: 'Returned', value: 12 },
+      ],
+    });
+  });
+
   it('shows no-data for empty rows without throwing', async () => {
     const empty: QueryResult = {
       rows: [],

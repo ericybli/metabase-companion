@@ -5,6 +5,7 @@ import Svg, { G, Path, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '@/ui/ThemeProvider';
 import { CHART_HEIGHT, CHART_PALETTE } from '@/render/chartScale';
 import { buildPieModel, type PieModel, type PieSlice } from '@/viz/model/pieModel';
+import { buildPointSelectInfo, type PointSelectInfo } from '@/viz/drill/pointSelect';
 import { useChartTooltip } from './ChartTooltip';
 import type { QueryResult } from '@/api/schemas';
 
@@ -13,6 +14,14 @@ export interface PieChartViewProps {
   vizSettings: Record<string, unknown>;
   /** Chart height in px (defaults to {@link CHART_HEIGHT}). */
   height?: number;
+  /**
+   * Optional drill-through callback. When provided, tapping a slice or its
+   * legend row reports the tapped point (slice index, dimension label, and the
+   * slice's numeric value) IN ADDITION to toggling the in-chart selection, so a
+   * dashboard can open a richer action sheet. Omitted -> only the selection is
+   * affected.
+   */
+  onPointSelect?: (info: PointSelectInfo) => void;
 }
 
 /** SVG viewBox is a 100-unit square; the donut is centered. */
@@ -91,6 +100,7 @@ export function PieChartView({
   result,
   vizSettings,
   height = CHART_HEIGHT,
+  onPointSelect,
 }: PieChartViewProps): React.ReactElement {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -112,6 +122,25 @@ export function PieChartView({
   const arcs = toArcs(model);
   const pieSize = Math.max(120, height - 20);
   const selected = selectedIndex !== null ? (model.slices[selectedIndex] ?? null) : null;
+
+  // A tap toggles the in-chart slice selection AND (when wired) reports the
+  // point for the dashboard drill action sheet.
+  const onSliceTap = (index: number): void => {
+    toggleIndex(index);
+    if (onPointSelect) {
+      const labels = model.slices.map((s) => s.label);
+      const series = [
+        {
+          name: model.metricName,
+          values: model.slices.map((s) => s.value),
+        },
+      ];
+      const info = buildPointSelectInfo(index, labels, series);
+      if (info) {
+        onPointSelect(info);
+      }
+    }
+  };
 
   // Center caption: the selected slice's label/value/percent, else the total.
   const centerTop = selected ? selected.label : t('chart.pieTotal');
@@ -137,7 +166,7 @@ export function PieChartView({
                     stroke={theme.colors.background}
                     strokeWidth={isSel ? 1.5 : 1}
                     opacity={selectedIndex === null || isSel ? 1 : 0.45}
-                    onPress={() => toggleIndex(arc.index)}
+                    onPress={() => onSliceTap(arc.index)}
                   />
                   {arc.slice.showChartLabel ? (
                     <SvgText
@@ -178,7 +207,7 @@ export function PieChartView({
               <Pressable
                 key={`legend-${i}`}
                 testID={`pie-legend-${i}`}
-                onPress={() => toggleIndex(i)}
+                onPress={() => onSliceTap(i)}
                 style={[styles.legendRow, isSel ? { backgroundColor: theme.colors.surface } : null]}
               >
                 <View style={[styles.swatch, { backgroundColor: slice.color }]} />

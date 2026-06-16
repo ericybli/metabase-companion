@@ -32,9 +32,10 @@ export interface CardViewProps {
   height?: number;
   /**
    * Optional drill-through callback forwarded to the cartesian/scatter/waterfall
-   * renderers (bar/line/area/combo/scatter/waterfall). When set, tapping a point
-   * on one of those charts reports the tapped point so a dashboard can open a
-   * details / cross-filter action sheet. Other displays ignore it.
+   * renderers (bar/line/area/combo/row/scatter/waterfall) and the pie renderer.
+   * When set, tapping a point or slice on one of those charts reports the tapped
+   * point so a dashboard can open a details / cross-filter action sheet. Other
+   * displays ignore it.
    */
   onPointSelect?: (info: PointSelectInfo) => void;
 }
@@ -101,7 +102,14 @@ export function CardView({
         />
       );
     case 'row':
-      return <RowChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <RowChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'line':
       return (
         <LineChartView
@@ -130,7 +138,14 @@ export function CardView({
         />
       );
     case 'pie':
-      return <PieChartView result={result} vizSettings={vizSettings} height={height} />;
+      return (
+        <PieChartView
+          result={result}
+          vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
     case 'scatter':
       return (
         <ScatterChartView
