@@ -202,6 +202,10 @@ function ChoroplethMapView({
         points: metricCol ? [{ name: metricCol.displayName, value: value ?? 0 }] : [],
         dimensionColumnName: config.dimensionName,
       };
+      const fid = model.dimensionCol?.fieldId;
+      if (fid != null) {
+        info.dimensionFieldId = fid;
+      }
       onPointSelect(info);
     }
   };

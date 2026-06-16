@@ -230,4 +230,27 @@ describe('buildPieModel', () => {
     const other = model.slices.find((s) => s.isOther);
     expect(other?.value).toBe(20);
   });
+
+  it('passes a non-null dimension field id through to the model', () => {
+    const r: QueryResult = {
+      rows: [
+        ['A', 60],
+        ['B', 40],
+      ],
+      cols: [{ ...dimCol, fieldId: 42 }, metricCol],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    const model = buildPieModel(r, {}, PALETTE, OTHER_COLOR)!;
+    expect(model.dimension).toEqual({ name: 'category', fieldId: 42 });
+  });
+
+  it('reports a null dimension field id when the dimension column has none', () => {
+    const model = build([
+      ['A', 60],
+      ['B', 40],
+    ]);
+    expect(model.dimension).toEqual({ name: 'category', fieldId: null });
+  });
 });

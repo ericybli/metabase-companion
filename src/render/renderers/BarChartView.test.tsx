@@ -251,6 +251,51 @@ describe('BarChartView', () => {
     });
   });
 
+  it('reports the dimension field id to onPointSelect when the dimension carries one', async () => {
+    const onPointSelect = jest.fn();
+    const withFieldId: QueryResult = {
+      rows: [
+        ['Jan', 10],
+        ['Feb', 25],
+      ],
+      cols: [
+        {
+          name: 'month',
+          displayName: 'Month',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: 42,
+        },
+        {
+          name: 'total',
+          displayName: 'Total',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(
+      <BarChartView result={withFieldId} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+    expect(onPointSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ dimensionColumnName: 'month', dimensionFieldId: 42 }),
+    );
+  });
+
+  it('omits the dimension field id when the dimension column has none', async () => {
+    const onPointSelect = jest.fn();
+    await render(
+      <BarChartView result={twoSeries} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+    fireEvent.press(screen.getByTestId('chart-touch-1'));
+    expect(onPointSelect.mock.calls[0]![0]).not.toHaveProperty('dimensionFieldId');
+  });
+
   it('clears the tooltip when the same column is tapped again', async () => {
     await render(<BarChartView result={threePoint} vizSettings={{}} />);
     fireEvent.press(screen.getByTestId('chart-touch-0'));

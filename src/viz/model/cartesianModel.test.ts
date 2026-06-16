@@ -691,4 +691,23 @@ describe('buildCartesianModel', () => {
     expect(seriesByName(model, 'A').axis).toBe('left');
     expect(seriesByName(model, 'B').axis).toBe('right');
   });
+
+  it('passes a non-null dimension field id through to the model', () => {
+    const cols = [
+      makeCol({ name: 'dim', displayName: 'Dimension', baseType: 'type/Text', fieldId: 42 }),
+      makeCol({ name: 'Revenue', displayName: 'Revenue', baseType: 'type/Float' }),
+    ];
+    const result = makeResult(cols, [
+      ['Q1', 1000],
+      ['Q2', 5000],
+    ]);
+    const model = buildCartesianModel(result, {}) as CartesianModel;
+    expect(model.dimension).toEqual({ name: 'dim', fieldId: 42 });
+  });
+
+  it('reports a null dimension field id when the dimension column has none', () => {
+    const { result } = chartResult(['Q1', 'Q2'], [{ name: 'Revenue', values: [1000, 5000] }]);
+    const model = buildCartesianModel(result, {}) as CartesianModel;
+    expect(model.dimension).toEqual({ name: 'dim', fieldId: null });
+  });
 });

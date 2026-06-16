@@ -149,4 +149,38 @@ describe('ScatterChartView', () => {
     await render(<ScatterChartView result={noMetric} vizSettings={{}} />);
     expect(screen.getByText('No data')).toBeTruthy();
   });
+
+  it('reports the dimension field id to onPointSelect when the x column carries one', async () => {
+    const onPointSelect = jest.fn();
+    const withFieldId: QueryResult = {
+      rows: [
+        [1, 10],
+        [2, 20],
+      ],
+      cols: [
+        { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null, fieldId: 42 },
+        { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null, fieldId: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(
+      <ScatterChartView result={withFieldId} vizSettings={{}} onPointSelect={onPointSelect} />,
+    );
+    fireEvent.press(screen.getByTestId('scatter-point-0-1'));
+    expect(onPointSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ dimensionColumnName: 'x', dimensionFieldId: 42 }),
+    );
+  });
+
+  it('omits the dimension field id when the x column has none', async () => {
+    const onPointSelect = jest.fn();
+    await render(<ScatterChartView result={xy} vizSettings={{}} onPointSelect={onPointSelect} />);
+    fireEvent.press(screen.getByTestId('scatter-point-0-1'));
+    expect(onPointSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ dimensionColumnName: 'x' }),
+    );
+    expect(onPointSelect.mock.calls[0]![0]).not.toHaveProperty('dimensionFieldId');
+  });
 });

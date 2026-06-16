@@ -156,6 +156,29 @@ describe('buildScatterModel', () => {
     };
     expect(buildScatterModel(noMetric, {})).toBeNull();
   });
+
+  it('passes a non-null dimension field id through to the model', () => {
+    const withFieldId: QueryResult = {
+      rows: [
+        [1, 10],
+        [2, 20],
+      ],
+      cols: [
+        { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null, fieldId: 42 },
+        { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null, fieldId: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    const model = buildScatterModel(withFieldId, {})!;
+    expect(model.dimension).toEqual({ name: 'x', fieldId: 42 });
+  });
+
+  it('reports a null dimension field id when the x column has none', () => {
+    const model = buildScatterModel(xy, {})!;
+    expect(model.dimension).toEqual({ name: 'x', fieldId: null });
+  });
 });
 
 describe('bubbleRadius', () => {

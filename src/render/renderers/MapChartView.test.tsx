@@ -97,6 +97,38 @@ describe('MapChartView — choropleth (region)', () => {
     expect(info.label).toBe('California');
     expect(info.points[0]?.value).toBe(1000);
     expect(info.dimensionColumnName).toBe('state');
+    // The default fixture's dimension carries no field id.
+    expect(info).not.toHaveProperty('dimensionFieldId');
+  });
+
+  it('reports the dimension field id to onPointSelect when the dimension carries one', async () => {
+    const onPointSelect = jest.fn<void, [PointSelectInfo]>();
+    const withFieldId: QueryResult = {
+      cols: [
+        { ...col('state', 'type/Text', 'type/State'), fieldId: 42 },
+        col('total', 'type/Integer'),
+      ],
+      rows: [
+        ['California', 1000],
+        ['Texas', 500],
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(
+      <MapChartView
+        result={withFieldId}
+        vizSettings={{}}
+        display="state"
+        onPointSelect={onPointSelect}
+      />,
+    );
+    fireEvent.press(screen.getByTestId('region-ca'));
+    expect(onPointSelect).toHaveBeenCalledTimes(1);
+    const info = onPointSelect.mock.calls[0]![0];
+    expect(info.dimensionColumnName).toBe('state');
+    expect(info.dimensionFieldId).toBe(42);
   });
 
   it('joins world countries by ISO code', async () => {

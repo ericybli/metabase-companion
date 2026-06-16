@@ -190,6 +190,41 @@ describe('buildWaterfallModel', () => {
     };
     expect(buildWaterfallModel(noMeasure, {})).toBeNull();
   });
+
+  it('passes a non-null dimension field id through to the model', () => {
+    const withFieldId: QueryResult = {
+      rows: [
+        ['Start', 100],
+        ['Upsell', 50],
+      ],
+      cols: [
+        {
+          name: 'step',
+          displayName: 'Step',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: 42,
+        },
+        {
+          name: 'amount',
+          displayName: 'Amount',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    const model = buildWaterfallModel(withFieldId, { 'waterfall.show_total': false })!;
+    expect(model.dimension).toEqual({ name: 'step', fieldId: 42 });
+  });
+
+  it('reports a null dimension field id when the dimension column has none', () => {
+    const model = buildWaterfallModel(flows, { 'waterfall.show_total': false })!;
+    expect(model.dimension).toEqual({ name: 'step', fieldId: null });
+  });
 });
 
 describe('waterfallColors / showTotal', () => {
