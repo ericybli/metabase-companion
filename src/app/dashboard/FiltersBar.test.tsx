@@ -105,32 +105,70 @@ describe('FiltersBar', () => {
   });
 
   describe('date params', () => {
-    it('renders a DatePicker (not a TextInput) for date-type params', async () => {
+    it('renders a DateFilterControl (not a TextInput) for date-type params', async () => {
       const onApply = jest.fn();
       const parameters = [param({ id: 'p1', name: 'Date Filter', type: 'date/single' })];
       await render(
         <FiltersBar parameters={parameters} values={{ p1: '2024-03-15' }} onApply={onApply} />,
       );
 
-      // The DatePicker trigger shows the seeded value, and there's no text input
-      // for it (no placeholder of the param type).
-      expect(screen.getByText('2024-03-15')).toBeTruthy();
+      // The control trigger shows the human label of the seeded value, and there's
+      // no text input for it (no placeholder of the param type).
+      expect(screen.getByText('March 15, 2024')).toBeTruthy();
       expect(screen.queryByDisplayValue('2024-03-15')).toBeNull();
     });
 
-    it('selecting a date through the picker is committed on Apply', async () => {
+    it('seeds a relative value as its human label', async () => {
+      const onApply = jest.fn();
+      const parameters = [param({ id: 'p1', name: 'Date Filter', type: 'date/all-options' })];
+      await render(
+        <FiltersBar parameters={parameters} values={{ p1: 'past30days' }} onApply={onApply} />,
+      );
+      expect(screen.getByText('Previous 30 days')).toBeTruthy();
+    });
+
+    it('selecting a relative preset forwards the serialized string on Apply', async () => {
+      const onApply = jest.fn();
+      const parameters = [param({ id: 'p1', name: 'Date Filter', type: 'date/all-options' })];
+      await render(<FiltersBar parameters={parameters} values={{}} onApply={onApply} />);
+
+      // Open the control (placeholder = the param type) and pick a preset.
+      fireEvent.press(screen.getByText('date/all-options'));
+      fireEvent.press(screen.getByText('Previous 30 days'));
+      fireEvent.press(screen.getByText('Apply'));
+
+      expect(onApply).toHaveBeenCalledWith({ p1: 'past30days' });
+    });
+
+    it('forwards a seeded specific-date value unchanged on Apply', async () => {
+      // The deep specific-date picker flow is covered in DateFilterControl's own
+      // tests; here we verify the serialized value flows through FiltersBar's edit
+      // state and out via onApply without mutation.
       const onApply = jest.fn();
       const parameters = [param({ id: 'p1', name: 'Date Filter', type: 'date/single' })];
       await render(
         <FiltersBar parameters={parameters} values={{ p1: '2024-03-15' }} onApply={onApply} />,
       );
 
-      // Open the picker and choose a new day.
-      fireEvent.press(screen.getByText('2024-03-15'));
-      fireEvent.press(screen.getByText('20'));
       fireEvent.press(screen.getByText('Apply'));
+      expect(onApply).toHaveBeenCalledWith({ p1: '2024-03-15' });
+    });
 
-      expect(onApply).toHaveBeenCalledWith({ p1: '2024-03-20' });
+    it('forwards a range value string unchanged on Apply', async () => {
+      const onApply = jest.fn();
+      const parameters = [param({ id: 'p1', name: 'Date Filter', type: 'date/all-options' })];
+      await render(
+        <FiltersBar
+          parameters={parameters}
+          values={{ p1: '2020-01-01~2020-12-31' }}
+          onApply={onApply}
+        />,
+      );
+
+      // The control shows the range label, and the raw value round-trips on Apply.
+      expect(screen.getByText('January 1, 2020 – December 31, 2020')).toBeTruthy();
+      fireEvent.press(screen.getByText('Apply'));
+      expect(onApply).toHaveBeenCalledWith({ p1: '2020-01-01~2020-12-31' });
     });
   });
 

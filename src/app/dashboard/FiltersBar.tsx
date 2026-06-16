@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
-import { DatePicker } from '@/ui/DatePicker';
+import { DateFilterControl } from '@/ui/DateFilterControl';
 import { Dropdown } from '@/ui/Dropdown';
 import type { DashboardParameter } from '@/api/schemas';
 
@@ -58,8 +58,10 @@ function isBackedSource(valuesSourceType: string): boolean {
  * A simple, Expo-Go-safe filter bar. A header row ("Filters" + a chevron)
  * toggles between collapsed (header only, with a count of non-empty filters)
  * and expanded (one labeled control per dashboard parameter + an Apply button).
- * Date-type parameters render a {@link DatePicker}; everything else a TextInput.
- * Local edit state is seeded from the applied values and committed via
+ * Date-type parameters (type starting with 'date') render a
+ * {@link DateFilterControl} whose serialized Metabase value string flows through
+ * the edit state unchanged; static/backed params a Dropdown; everything else a
+ * TextInput. Local edit state is seeded from the applied values and committed via
  * {@link FiltersBarProps.onApply}. Renders nothing when there are no parameters.
  */
 export function FiltersBar({
@@ -133,9 +135,9 @@ export function FiltersBar({
               <View key={p.id} style={styles.field}>
                 <Text style={[styles.label, { color: theme.colors.text }]}>{p.name ?? ''}</Text>
                 {isDateParam(type) ? (
-                  <DatePicker
+                  <DateFilterControl
                     value={current !== '' ? current : null}
-                    onChange={(iso) => setEdit(p.id, iso)}
+                    onChange={(serialized) => setEdit(p.id, serialized)}
                     placeholder={type}
                   />
                 ) : hasStaticValues ? (
