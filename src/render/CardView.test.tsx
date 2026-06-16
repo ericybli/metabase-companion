@@ -82,6 +82,44 @@ describe('CardView registry', () => {
     expect(screen.getByText('50%')).toBeTruthy();
   });
 
+  it('routes gauge to GaugeView (shows the value and a boundary label)', async () => {
+    await render(
+      <CardView
+        display="gauge"
+        result={scalarResult}
+        vizSettings={{
+          'gauge.segments': [
+            { min: 0, max: 50, color: '#EF8C8C' },
+            { min: 50, max: 100, color: '#88BF4D' },
+          ],
+        }}
+        name="Total"
+      />,
+    );
+    expect(screen.getByText('42')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
+  });
+
+  it('routes funnel to FunnelView (shows stage labels and percent-of-first)', async () => {
+    const funnelResult: QueryResult = {
+      rows: [
+        ['Visited', 100],
+        ['Purchased', 30],
+      ],
+      cols: [
+        { name: 'step', displayName: 'Step', baseType: 'type/Text', semanticType: null },
+        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(<CardView display="funnel" result={funnelResult} vizSettings={{}} name="Conv" />);
+    expect(screen.getByText('Visited')).toBeTruthy();
+    expect(screen.getByText('Purchased')).toBeTruthy();
+    expect(screen.getByText('30.00 %')).toBeTruthy();
+  });
+
   it('routes table to TableView (shows a header and a cell)', async () => {
     await render(<CardView display="table" result={tableResult} vizSettings={{}} name="Custs" />);
     expect(screen.getByText('Customer')).toBeTruthy();
@@ -167,9 +205,9 @@ describe('CardView registry', () => {
   });
 
   it('falls back to TableView with a note for an unknown display', async () => {
-    await render(<CardView display="funnel" result={tableResult} vizSettings={{}} name="Custs" />);
+    await render(<CardView display="sankey" result={tableResult} vizSettings={{}} name="Custs" />);
     // The fallback note mentions the unsupported display.
-    expect(screen.getByText('Shown as a table (funnel not yet supported)')).toBeTruthy();
+    expect(screen.getByText('Shown as a table (sankey not yet supported)')).toBeTruthy();
     // ...and the table itself still renders.
     expect(screen.getByText('Customer')).toBeTruthy();
     expect(screen.getByText('Acme')).toBeTruthy();
@@ -188,7 +226,18 @@ describe('CardView registry', () => {
     error: null,
   };
 
-  it.each(['bar', 'row', 'line', 'area', 'combo', 'pie', 'scatter', 'waterfall'])(
+  it.each([
+    'bar',
+    'row',
+    'line',
+    'area',
+    'combo',
+    'pie',
+    'scatter',
+    'waterfall',
+    'gauge',
+    'funnel',
+  ])(
     'renders %s with empty rows without throwing and shows the no-data message',
     async (display) => {
       // Rendering must not throw on empty data.

@@ -5,6 +5,8 @@ import { useTheme } from '@/ui/ThemeProvider';
 import { ScalarView } from '@/render/renderers/ScalarView';
 import { SmartScalarView } from '@/render/renderers/SmartScalarView';
 import { ProgressView } from '@/render/renderers/ProgressView';
+import { GaugeView } from '@/render/renderers/GaugeView';
+import { FunnelView } from '@/render/renderers/FunnelView';
 import { TableView } from '@/render/renderers/TableView';
 import { BarChartView } from '@/render/renderers/BarChartView';
 import { LineChartView } from '@/render/renderers/LineChartView';
@@ -32,7 +34,9 @@ export interface CardViewProps {
 /**
  * Registry that picks a native renderer from a card's `display`:
  *   scalar -> ScalarView, smartscalar -> SmartScalarView (latest-vs-previous
- *   trend), progress -> ProgressView (value vs goal bar), table/pivot ->
+ *   trend), progress -> ProgressView (value vs goal bar), gauge -> GaugeView
+ *   (value within colored segment ranges on a dial), funnel -> FunnelView
+ *   (decreasing stages, first = 100%), table/pivot ->
  *   TableView, bar -> BarChartView, row -> RowChartView (horizontal bars),
  *   line -> LineChartView, area -> AreaChartView, combo -> ComboChartView
  *   (mixed bar + line), pie -> PieChartView, scatter -> ScatterChartView
@@ -71,6 +75,10 @@ export function CardView({
       return <SmartScalarView result={result} vizSettings={vizSettings} name={name} />;
     case 'progress':
       return <ProgressView result={result} vizSettings={vizSettings} name={name} />;
+    case 'gauge':
+      return <GaugeView result={result} vizSettings={vizSettings} name={name} />;
+    case 'funnel':
+      return <FunnelView result={result} vizSettings={vizSettings} name={name} />;
     case 'table':
     case 'pivot':
       return <TableView result={result} />;
