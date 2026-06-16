@@ -5,6 +5,7 @@ import {
   DashboardListSchema,
   DashboardDetailSchema,
   QueryResultSchema,
+  CardDetailSchema,
 } from './schemas';
 
 describe('QueryResultSchema', () => {
@@ -607,6 +608,57 @@ describe('CurrentUserSchema', () => {
 
   it('rejects a payload missing email', () => {
     expect(() => CurrentUserSchema.parse({ id: 7, is_superuser: false })).toThrow();
+  });
+});
+
+describe('CardDetailSchema', () => {
+  it('maps snake_case to camelCase and keeps viz settings', () => {
+    expect(
+      CardDetailSchema.parse({
+        id: 5,
+        name: 'Revenue',
+        display: 'scalar',
+        visualization_settings: { 'scalar.field': 'revenue' },
+        description: 'Monthly revenue',
+        collection_id: 3, // unknown extra key ignored (passthrough)
+      }),
+    ).toEqual({
+      id: 5,
+      name: 'Revenue',
+      display: 'scalar',
+      visualizationSettings: { 'scalar.field': 'revenue' },
+      description: 'Monthly revenue',
+    });
+  });
+
+  it('defaults missing/null visualization_settings to {} and description to null', () => {
+    expect(
+      CardDetailSchema.parse({
+        id: 6,
+        name: 'Orders',
+        display: 'table',
+        visualization_settings: null,
+        description: null,
+      }),
+    ).toEqual({
+      id: 6,
+      name: 'Orders',
+      display: 'table',
+      visualizationSettings: {},
+      description: null,
+    });
+    // Omitting the optional keys entirely yields the same defaults.
+    expect(CardDetailSchema.parse({ id: 7, name: 'Q', display: 'line' })).toEqual({
+      id: 7,
+      name: 'Q',
+      display: 'line',
+      visualizationSettings: {},
+      description: null,
+    });
+  });
+
+  it('rejects a payload missing required keys', () => {
+    expect(() => CardDetailSchema.parse({ id: 5, name: 'Revenue' })).toThrow();
   });
 });
 

@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import type { MetabaseClient } from './client';
 import {
+  CardDetailSchema,
   CurrentUserSchema,
   DashboardDetailSchema,
   DashboardListSchema,
   QueryResultSchema,
   SessionPropertiesSchema,
+  type CardDetail,
   type CurrentUser,
   type DashboardDetail,
   type DashboardSummary,
@@ -69,6 +71,11 @@ export function runDashcardQuery(
     { parameters },
     QueryResultSchema,
   );
+}
+
+/** GET /api/card/:id — a standalone saved question (display, viz settings, name). */
+export function getCard(client: MetabaseClient, id: number): Promise<CardDetail> {
+  return client.get(`/api/card/${id}`, CardDetailSchema);
 }
 
 /**

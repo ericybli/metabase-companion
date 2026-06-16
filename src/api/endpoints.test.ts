@@ -4,6 +4,7 @@ import {
   deleteSession,
   listDashboards,
   getDashboard,
+  getCard,
   runDashcardQuery,
   runCardQuery,
   getParameterValues,
@@ -180,6 +181,31 @@ describe('endpoints', () => {
       { parameters: [{ id: 'abc', value: 'this-month' }] },
       expect.anything(),
     );
+  });
+
+  it('getCard calls GET /api/card/:id with CardDetailSchema', async () => {
+    const raw = {
+      id: 5,
+      name: 'Revenue',
+      display: 'scalar',
+      visualization_settings: { 'scalar.field': 'revenue' },
+      description: 'Monthly revenue',
+    };
+    const get = jest.fn(async (_path: string, schema: { parse: (v: unknown) => unknown }) =>
+      schema.parse(raw),
+    );
+    const client = { get } as unknown as MetabaseClient;
+
+    const card = await getCard(client, 5);
+
+    expect(get).toHaveBeenCalledWith('/api/card/5', expect.anything());
+    expect(card).toEqual({
+      id: 5,
+      name: 'Revenue',
+      display: 'scalar',
+      visualizationSettings: { 'scalar.field': 'revenue' },
+      description: 'Monthly revenue',
+    });
   });
 
   it('runCardQuery calls POST with exact path, empty body, and parses QueryResult', async () => {

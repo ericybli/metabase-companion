@@ -162,6 +162,36 @@ export interface DashboardDetail {
   tabs: DashboardTab[];
 }
 
+// ---- CardDetail (GET /api/card/:id) ----
+// A standalone saved question. We keep only what's needed to render it as a
+// card: its display, visualization settings, name, and optional description.
+export interface CardDetail {
+  id: number;
+  name: string;
+  display: string;
+  visualizationSettings: Record<string, unknown>;
+  description: string | null;
+}
+
+export const CardDetailSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    display: z.string(),
+    visualization_settings: z.record(z.string(), z.unknown()).nullable().optional(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): CardDetail => ({
+      id: raw.id,
+      name: raw.name,
+      display: raw.display,
+      visualizationSettings: raw.visualization_settings ?? {},
+      description: raw.description ?? null,
+    }),
+  );
+
 // ---- QueryResult (POST .../query) ----
 export interface QueryColumn {
   name: string;
