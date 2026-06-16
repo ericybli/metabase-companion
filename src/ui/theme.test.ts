@@ -19,6 +19,7 @@ describe('theme', () => {
           primary: expect.any(String),
           border: expect.any(String),
           danger: expect.any(String),
+          success: expect.any(String),
         }),
       );
     }

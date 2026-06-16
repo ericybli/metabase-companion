@@ -44,11 +44,42 @@ describe('CardView registry', () => {
     expect(screen.getByText('42')).toBeTruthy();
   });
 
-  it('routes smartscalar to ScalarView', async () => {
+  it('routes smartscalar to SmartScalarView (latest value + trend comparison)', async () => {
+    const trendResult: QueryResult = {
+      rows: [
+        ['Apr', 100],
+        ['May', 120],
+      ],
+      cols: [
+        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
+        { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
     await render(
-      <CardView display="smartscalar" result={scalarResult} vizSettings={{}} name="Total" />,
+      <CardView display="smartscalar" result={trendResult} vizSettings={{}} name="Total" />,
+    );
+    // Latest value large.
+    expect(screen.getByText('120')).toBeTruthy();
+    // Trend comparison vs. the previous period.
+    expect(screen.getByText('20%')).toBeTruthy();
+    expect(screen.getByText('vs. Apr')).toBeTruthy();
+  });
+
+  it('routes progress to ProgressView (value, goal, and percent)', async () => {
+    await render(
+      <CardView
+        display="progress"
+        result={scalarResult}
+        vizSettings={{ 'progress.goal': 84 }}
+        name="Total"
+      />,
     );
     expect(screen.getByText('42')).toBeTruthy();
+    expect(screen.getByText('Goal 84')).toBeTruthy();
+    expect(screen.getByText('50%')).toBeTruthy();
   });
 
   it('routes table to TableView (shows a header and a cell)', async () => {

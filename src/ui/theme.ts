@@ -8,6 +8,8 @@ export interface Theme {
     primary: string;
     border: string;
     danger: string;
+    /** Positive / "increase" accent (e.g. trend up). */
+    success: string;
   };
   spacing: (n: number) => number; // n * 4
   radius: { sm: number; md: number; lg: number };
@@ -27,6 +29,7 @@ export const lightTheme: Theme = {
     primary: '#3B82C4',
     border: '#E2E7EE',
     danger: '#D14343',
+    success: '#4F9A45',
   },
   spacing,
   radius,
@@ -42,6 +45,7 @@ export const darkTheme: Theme = {
     primary: '#62A8E5',
     border: '#2C333D',
     danger: '#E5736E',
+    success: '#84BB4C',
   },
   spacing,
   radius,

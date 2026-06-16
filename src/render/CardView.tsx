@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/ui/ThemeProvider';
 import { ScalarView } from '@/render/renderers/ScalarView';
+import { SmartScalarView } from '@/render/renderers/SmartScalarView';
+import { ProgressView } from '@/render/renderers/ProgressView';
 import { TableView } from '@/render/renderers/TableView';
 import { BarChartView } from '@/render/renderers/BarChartView';
 import { LineChartView } from '@/render/renderers/LineChartView';
@@ -29,8 +31,9 @@ export interface CardViewProps {
 
 /**
  * Registry that picks a native renderer from a card's `display`:
- *   scalar/smartscalar -> ScalarView, table/pivot -> TableView,
- *   bar -> BarChartView, row -> RowChartView (horizontal bars),
+ *   scalar -> ScalarView, smartscalar -> SmartScalarView (latest-vs-previous
+ *   trend), progress -> ProgressView (value vs goal bar), table/pivot ->
+ *   TableView, bar -> BarChartView, row -> RowChartView (horizontal bars),
  *   line -> LineChartView, area -> AreaChartView, combo -> ComboChartView
  *   (mixed bar + line), pie -> PieChartView, scatter -> ScatterChartView
  *   (numeric x/y, optional bubble size), waterfall -> WaterfallChartView
@@ -63,8 +66,11 @@ export function CardView({
 
   switch (display) {
     case 'scalar':
-    case 'smartscalar':
       return <ScalarView result={result} vizSettings={vizSettings} name={name} />;
+    case 'smartscalar':
+      return <SmartScalarView result={result} vizSettings={vizSettings} name={name} />;
+    case 'progress':
+      return <ProgressView result={result} vizSettings={vizSettings} name={name} />;
     case 'table':
     case 'pivot':
       return <TableView result={result} />;
