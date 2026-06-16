@@ -218,6 +218,28 @@ describe('CardView registry', () => {
     expect(screen.getByText('Total')).toBeTruthy();
   });
 
+  it('routes map/state to MapChartView (renders a choropleth, not the table fallback)', async () => {
+    const statesResult: QueryResult = {
+      rows: [
+        ['California', 1000],
+        ['Texas', 500],
+      ],
+      cols: [
+        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: 'type/State' },
+        { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    };
+    await render(
+      <CardView display="state" result={statesResult} vizSettings={{}} name="By state" />,
+    );
+    // The choropleth SVG is present (it is NOT routed to the unsupported table).
+    expect(screen.getByTestId('choropleth-svg')).toBeTruthy();
+    expect(screen.queryByText('Shown as a table (state not yet supported)')).toBeNull();
+  });
+
   it('forwards a custom height to the chart renderer', async () => {
     const { UNSAFE_getAllByType } = await render(
       <CardView display="line" result={seriesResult} vizSettings={{}} name="Sales" height={500} />,

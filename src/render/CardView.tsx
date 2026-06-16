@@ -17,6 +17,7 @@ import { RowChartView } from '@/render/renderers/RowChartView';
 import { PieChartView } from '@/render/renderers/PieChartView';
 import { ScatterChartView } from '@/render/renderers/ScatterChartView';
 import { WaterfallChartView } from '@/render/renderers/WaterfallChartView';
+import { MapChartView } from '@/render/renderers/MapChartView';
 import type { PointSelectInfo } from '@/viz/drill/pointSelect';
 import type { QueryResult } from '@/api/schemas';
 
@@ -52,7 +53,9 @@ export interface CardViewProps {
  *   line -> LineChartView, area -> AreaChartView, combo -> ComboChartView
  *   (mixed bar + line), pie -> PieChartView, scatter -> ScatterChartView
  *   (numeric x/y, optional bubble size), waterfall -> WaterfallChartView
- *   (running-total floating bars). Any unknown display falls back to TableView
+ *   (running-total floating bars), map/state/country/pin_map -> MapChartView
+ *   (SVG choropleth or pin map; falls back to TableView when unconfigured). Any
+ *   unknown display falls back to TableView
  *   (we always have the rows) prefixed by a small note that explains the
  *   substitution.
  *
@@ -163,6 +166,19 @@ export function CardView({
         <WaterfallChartView
           result={result}
           vizSettings={vizSettings}
+          height={height}
+          onPointSelect={onPointSelect}
+        />
+      );
+    case 'map':
+    case 'state':
+    case 'country':
+    case 'pin_map':
+      return (
+        <MapChartView
+          result={result}
+          vizSettings={vizSettings}
+          display={display}
           height={height}
           onPointSelect={onPointSelect}
         />

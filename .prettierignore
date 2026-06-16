@@ -7,3 +7,5 @@ ios/
 android/
 assets/
 package-lock.json
+# Bundled, pre-minified GeoJSON map data (not hand-edited source).
+src/render/maps/geo/*.json
