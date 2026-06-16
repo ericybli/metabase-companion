@@ -53,11 +53,13 @@ export interface ChartData {
   labels: string[];
   series: { name: string; values: number[] }[];
   /**
-   * Name of the resolved dimension (x / category) column (`QueryColumn.name`),
-   * used by the dashboard cross-filter to map a clicked category back to a
-   * dashboard parameter. Undefined when no dimension column could be resolved.
+   * The resolved dimension (x / category) column — the same column used to build
+   * `labels`. Carries its raw name (`QueryColumn.name`) and backing field id,
+   * which the dashboard cross-filter uses to map a clicked category back to a
+   * dashboard parameter (by field id when present, else by name). Undefined when
+   * no dimension column could be resolved.
    */
-  dimensionColumnName?: string;
+  dimension?: { name: string; fieldId: number | null };
 }
 
 /**
@@ -141,5 +143,9 @@ export function toChartData(
     return { name: metricCol.displayName, values };
   });
 
-  return { labels, series, dimensionColumnName: resolvedDimensionCol?.name };
+  const dimension = resolvedDimensionCol
+    ? { name: resolvedDimensionCol.name, fieldId: resolvedDimensionCol.fieldId }
+    : undefined;
+
+  return { labels, series, dimension };
 }

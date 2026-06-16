@@ -9,18 +9,21 @@ const regionCol: QueryColumn = {
   displayName: 'Region',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const yearCol: QueryColumn = {
   name: 'Year',
   displayName: 'Year',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const totalCol: QueryColumn = {
   name: 'Total',
   displayName: 'Total',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 const pivotResult: QueryResult = {
@@ -86,6 +89,7 @@ describe('PivotTableView', () => {
       displayName: 'Other',
       baseType: 'type/Integer',
       semanticType: null,
+      fieldId: null,
     };
     const result: QueryResult = {
       rows: [['West', '2023', 100, 1]],

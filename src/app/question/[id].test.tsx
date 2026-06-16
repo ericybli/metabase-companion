@@ -46,7 +46,13 @@ describe('QuestionScreen', () => {
     mockRunCardQuery.mockResolvedValue({
       rows: [[42]],
       cols: [
-        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
       status: 'completed',

@@ -14,8 +14,8 @@ const xy: QueryResult = {
     [4, 40],
   ],
   cols: [
-    { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null },
-    { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null },
+    { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null, fieldId: null },
+    { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null, fieldId: null },
   ],
   rowCount: 4,
   status: 'completed',
@@ -29,9 +29,15 @@ const xyWithSize: QueryResult = {
     [3, 15, 50],
   ],
   cols: [
-    { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null },
-    { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null },
-    { name: 'pop', displayName: 'Population', baseType: 'type/Integer', semanticType: null },
+    { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null, fieldId: null },
+    { name: 'y', displayName: 'Y', baseType: 'type/Float', semanticType: null, fieldId: null },
+    {
+      name: 'pop',
+      displayName: 'Population',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
   ],
   rowCount: 3,
   status: 'completed',
@@ -90,9 +96,9 @@ describe('ScatterChartView', () => {
         [2, 20, 8],
       ],
       cols: [
-        { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null },
-        { name: 'a', displayName: 'A', baseType: 'type/Float', semanticType: null },
-        { name: 'b', displayName: 'B', baseType: 'type/Float', semanticType: null },
+        { name: 'x', displayName: 'X', baseType: 'type/Float', semanticType: null, fieldId: null },
+        { name: 'a', displayName: 'A', baseType: 'type/Float', semanticType: null, fieldId: null },
+        { name: 'b', displayName: 'B', baseType: 'type/Float', semanticType: null, fieldId: null },
       ],
       rowCount: 2,
       status: 'completed',
@@ -127,7 +133,15 @@ describe('ScatterChartView', () => {
   it('shows no-data when there is no numeric metric', async () => {
     const noMetric: QueryResult = {
       rows: [['a'], ['b']],
-      cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 2,
       status: 'completed',
       error: null,

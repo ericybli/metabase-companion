@@ -6,18 +6,21 @@ const regionCol: QueryColumn = {
   displayName: 'Region',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const yearCol: QueryColumn = {
   name: 'Year',
   displayName: 'Year',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const totalCol: QueryColumn = {
   name: 'Total',
   displayName: 'Total',
   baseType: 'type/Float',
   semanticType: null,
+  fieldId: null,
 };
 
 function result(cols: QueryColumn[], rows: unknown[][]): QueryResult {
@@ -107,18 +110,21 @@ describe('buildPivotModel', () => {
       displayName: 'Country',
       baseType: 'type/Text',
       semanticType: null,
+      fieldId: null,
     };
     const cityCol: QueryColumn = {
       name: 'City',
       displayName: 'City',
       baseType: 'type/Text',
       semanticType: null,
+      fieldId: null,
     };
     const revenueCol: QueryColumn = {
       name: 'Revenue',
       displayName: 'Revenue',
       baseType: 'type/Float',
       semanticType: null,
+      fieldId: null,
     };
     const r = result(
       [countryCol, cityCol, revenueCol],
@@ -172,6 +178,7 @@ describe('buildPivotModel', () => {
       displayName: 'Other',
       baseType: 'type/Float',
       semanticType: null,
+      fieldId: null,
     };
     const r = result([regionCol, yearCol, totalCol, otherCol], [['West', '2023', 100, 1]]);
     const model = buildPivotModel(r, {
@@ -190,6 +197,7 @@ describe('buildPivotModel', () => {
       displayName: 'Quarter',
       baseType: 'type/Text',
       semanticType: null,
+      fieldId: null,
     };
     const r = result([regionCol, yearCol, quarterCol, totalCol], [['West', '2023', 'Q1', 100]]);
     const model = buildPivotModel(r, {
@@ -279,6 +287,7 @@ describe('buildPivotModel', () => {
       displayName: 'Month',
       baseType: 'type/Integer',
       semanticType: null,
+      fieldId: null,
     };
     const r = result(
       [regionCol, monthCol, totalCol],

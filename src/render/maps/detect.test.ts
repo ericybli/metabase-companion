@@ -19,6 +19,7 @@ const col = (name: string, baseType: string, semanticType: string | null = null)
   displayName: name,
   baseType,
   semanticType,
+  fieldId: null,
 });
 
 const lat = col('lat', 'type/Float', 'type/Latitude');

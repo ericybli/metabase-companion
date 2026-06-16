@@ -8,6 +8,7 @@ function makeCol(
 ): QueryColumn {
   return {
     semanticType: null,
+    fieldId: null,
     ...overrides,
   };
 }
@@ -75,12 +76,14 @@ describe('formatValue', () => {
     displayName: 'Revenue',
     baseType: 'type/Float',
     semanticType: 'type/Currency',
+    fieldId: null,
   });
   const percentCol = makeCol({
     name: 'rate',
     displayName: 'Rate',
     baseType: 'type/Float',
     semanticType: 'type/Percentage',
+    fieldId: null,
   });
   const dateCol = makeCol({ name: 'day', displayName: 'Day', baseType: 'type/Date' });
   const datetimeCol = makeCol({
@@ -289,7 +292,21 @@ describe('toChartData', () => {
       expect(data?.labels).toEqual(['Alpha', 'Beta']);
     });
 
-    it('surfaces the resolved dimension column name', () => {
+    it('surfaces the resolved dimension column name and field id', () => {
+      const result = makeResult(
+        [
+          makeCol({ name: 'label', displayName: 'Label', baseType: 'type/Text', fieldId: 42 }),
+          countCol,
+        ],
+        [
+          ['Alpha', 5],
+          ['Beta', 15],
+        ],
+      );
+      expect(toChartData(result, {})?.dimension).toEqual({ name: 'label', fieldId: 42 });
+    });
+
+    it('surfaces a null field id when the dimension column has none', () => {
       const result = makeResult(
         [labelCol, countCol],
         [
@@ -297,7 +314,7 @@ describe('toChartData', () => {
           ['Beta', 15],
         ],
       );
-      expect(toChartData(result, {})?.dimensionColumnName).toBe('label');
+      expect(toChartData(result, {})?.dimension).toEqual({ name: 'label', fieldId: null });
     });
   });
 

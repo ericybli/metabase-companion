@@ -106,8 +106,7 @@ export function AreaChartView({
   const onTouch = (index: number): void => {
     toggleIndex(index);
     if (onPointSelect) {
-      const dimension = model.dimensionColumnName ? { name: model.dimensionColumnName } : undefined;
-      const info = buildPointSelectInfo(index, model.labels, model.series, dimension);
+      const info = buildPointSelectInfo(index, model.labels, model.series, model.dimension);
       if (info) {
         onPointSelect(info);
       }

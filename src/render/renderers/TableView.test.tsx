@@ -41,8 +41,20 @@ describe('TableView', () => {
     const result: QueryResult = {
       rows: [['Acme', 10]],
       cols: [
-        { name: 'name', displayName: 'Customer', baseType: 'type/Text', semanticType: null },
-        { name: 'orders', displayName: 'Orders', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'name',
+          displayName: 'Customer',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'orders',
+          displayName: 'Orders',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
       status: 'completed',
@@ -59,7 +71,15 @@ describe('TableView', () => {
     const rows: unknown[][] = Array.from({ length: 150 }, (_, i) => [`row-${i}`]);
     const result: QueryResult = {
       rows,
-      cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 150,
       status: 'completed',
       error: null,
@@ -79,8 +99,20 @@ describe('TableView', () => {
         ['Short', 7],
       ],
       cols: [
-        { name: 'region', displayName: 'Region', baseType: 'type/Text', semanticType: null },
-        { name: 'deals', displayName: 'Deals', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'region',
+          displayName: 'Region',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'deals',
+          displayName: 'Deals',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -105,7 +137,9 @@ describe('TableView', () => {
     const longValue = 'overflowing-content-that-should-be-clipped';
     const result: QueryResult = {
       rows: [[longValue]],
-      cols: [{ name: 'c', displayName: 'C', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        { name: 'c', displayName: 'C', baseType: 'type/Text', semanticType: null, fieldId: null },
+      ],
       rowCount: 1,
       status: 'completed',
       error: null,
@@ -118,8 +152,20 @@ describe('TableView', () => {
 
 describe('computeColumnWidths', () => {
   const cols: QueryColumn[] = [
-    { name: 'region', displayName: 'Region', baseType: 'type/Text', semanticType: null },
-    { name: 'deals', displayName: 'Deals', baseType: 'type/Integer', semanticType: null },
+    {
+      name: 'region',
+      displayName: 'Region',
+      baseType: 'type/Text',
+      semanticType: null,
+      fieldId: null,
+    },
+    {
+      name: 'deals',
+      displayName: 'Deals',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
   ];
 
   it('clamps a very long column to the max width and a short column to the min', () => {

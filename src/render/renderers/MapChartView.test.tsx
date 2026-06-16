@@ -11,6 +11,7 @@ const col = (name: string, baseType: string, semanticType: string | null = null)
   displayName: name,
   baseType,
   semanticType,
+  fieldId: null,
 });
 
 const statesResult: QueryResult = {

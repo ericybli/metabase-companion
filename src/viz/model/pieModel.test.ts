@@ -15,12 +15,14 @@ const dimCol = {
   displayName: 'Category',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const metricCol = {
   name: 'sales',
   displayName: 'Sales',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 function result(rows: [string, number][]): QueryResult {

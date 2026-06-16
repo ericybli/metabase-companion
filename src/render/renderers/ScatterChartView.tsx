@@ -101,7 +101,16 @@ export function ScatterChartView({
         if (p.size !== null) {
           points.push({ name: t('chart.scatterSize'), value: p.size });
         }
-        onPointSelect({ index: pointIndex, label: formatNumber(p.x), points });
+        const info: PointSelectInfo = {
+          index: pointIndex,
+          label: formatNumber(p.x),
+          points,
+          dimensionColumnName: model.dimension.name,
+        };
+        if (model.dimension.fieldId != null) {
+          info.dimensionFieldId = model.dimension.fieldId;
+        }
+        onPointSelect(info);
       }
     }
   };

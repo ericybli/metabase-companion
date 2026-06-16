@@ -47,6 +47,12 @@ export interface ScatterModel {
   y: AxisDomain;
   /** Raw [min, max] of the size column across all points, or null when absent. */
   sizeExtent: [number, number] | null;
+  /**
+   * The resolved X (dimension) column — its raw name (`QueryColumn.name`) and
+   * backing field id — passed through to the drill cross-filter so a tapped point
+   * maps back to a dashboard parameter (by field id when present, else by name).
+   */
+  dimension: { name: string; fieldId: number | null };
 }
 
 /** Default target tick count for the numeric scatter axes. */
@@ -193,7 +199,13 @@ export function buildScatterModel(
   const y = computeAxisDomain(yExtent, domainOpts) ?? { min: 0, max: 1 };
   const sizeExtent = seriesExtent(sizeValues);
 
-  return { series, x, y, sizeExtent };
+  return {
+    series,
+    x,
+    y,
+    sizeExtent,
+    dimension: { name: xCol.name, fieldId: xCol.fieldId },
+  };
 }
 
 /** Minimum bubble radius (px) for the smallest size value / unsized points. */

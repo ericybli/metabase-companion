@@ -12,8 +12,20 @@ const threeRows: QueryResult = {
     ['Cherries', 18],
   ],
   cols: [
-    { name: 'fruit', displayName: 'Fruit', baseType: 'type/Text', semanticType: null },
-    { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+    {
+      name: 'fruit',
+      displayName: 'Fruit',
+      baseType: 'type/Text',
+      semanticType: null,
+      fieldId: null,
+    },
+    {
+      name: 'count',
+      displayName: 'Count',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
   ],
   rowCount: 3,
   status: 'completed',
@@ -27,9 +39,27 @@ const twoSeries: QueryResult = {
     ['Cherries', 18, 9],
   ],
   cols: [
-    { name: 'fruit', displayName: 'Fruit', baseType: 'type/Text', semanticType: null },
-    { name: 'sold', displayName: 'Sold', baseType: 'type/Integer', semanticType: null },
-    { name: 'returned', displayName: 'Returned', baseType: 'type/Integer', semanticType: null },
+    {
+      name: 'fruit',
+      displayName: 'Fruit',
+      baseType: 'type/Text',
+      semanticType: null,
+      fieldId: null,
+    },
+    {
+      name: 'sold',
+      displayName: 'Sold',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
+    {
+      name: 'returned',
+      displayName: 'Returned',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
   ],
   rowCount: 3,
   status: 'completed',
@@ -133,7 +163,15 @@ describe('RowChartView', () => {
   it('shows no-data when there is no numeric metric column', async () => {
     const result: QueryResult = {
       rows: [['a'], ['b']],
-      cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 2,
       status: 'completed',
       error: null,
@@ -167,8 +205,20 @@ describe('RowChartView', () => {
     const empty: QueryResult = {
       rows: [],
       cols: [
-        { name: 'fruit', displayName: 'Fruit', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'fruit',
+          displayName: 'Fruit',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 0,
       status: 'completed',

@@ -12,6 +12,7 @@ const metricCol = {
   displayName: 'Total',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 function single(value: unknown): QueryResult {

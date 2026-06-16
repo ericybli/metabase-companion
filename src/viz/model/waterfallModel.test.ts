@@ -17,8 +17,14 @@ const flows: QueryResult = {
     ['Upsell', 50],
   ],
   cols: [
-    { name: 'step', displayName: 'Step', baseType: 'type/Text', semanticType: null },
-    { name: 'amount', displayName: 'Amount', baseType: 'type/Integer', semanticType: null },
+    { name: 'step', displayName: 'Step', baseType: 'type/Text', semanticType: null, fieldId: null },
+    {
+      name: 'amount',
+      displayName: 'Amount',
+      baseType: 'type/Integer',
+      semanticType: null,
+      fieldId: null,
+    },
   ],
   rowCount: 3,
   status: 'completed',
@@ -92,8 +98,20 @@ describe('buildWaterfallModel', () => {
         ['b', 10],
       ],
       cols: [
-        { name: 'step', displayName: 'Step', baseType: 'type/Text', semanticType: null },
-        { name: 'amount', displayName: 'Amount', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'step',
+          displayName: 'Step',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'amount',
+          displayName: 'Amount',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -120,8 +138,20 @@ describe('buildWaterfallModel', () => {
         ['b', 0],
       ],
       cols: [
-        { name: 'step', displayName: 'Step', baseType: 'type/Text', semanticType: null },
-        { name: 'amount', displayName: 'Amount', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'step',
+          displayName: 'Step',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'amount',
+          displayName: 'Amount',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -145,7 +175,15 @@ describe('buildWaterfallModel', () => {
   it('returns null when there is no measure column', () => {
     const noMeasure: QueryResult = {
       rows: [['a'], ['b']],
-      cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 2,
       status: 'completed',
       error: null,

@@ -43,8 +43,20 @@ describe('QueryResultSchema', () => {
       [3, 'Carol'],
     ]);
     expect(result.cols).toEqual([
-      { name: 'id', displayName: 'ID', baseType: 'type/Integer', semanticType: 'type/PK' },
-      { name: 'name', displayName: 'Full Name', baseType: 'type/Text', semanticType: null },
+      {
+        name: 'id',
+        displayName: 'ID',
+        baseType: 'type/Integer',
+        semanticType: 'type/PK',
+        fieldId: null,
+      },
+      {
+        name: 'name',
+        displayName: 'Full Name',
+        baseType: 'type/Text',
+        semanticType: null,
+        fieldId: null,
+      },
     ]);
     expect(result.rowCount).toBe(3);
   });
@@ -122,6 +134,59 @@ describe('QueryResultSchema', () => {
       expect(col.name).toBe('revenue');
       expect(col.semanticType).toBe('type/Currency');
     }
+  });
+
+  it('sets fieldId from a numeric col id', () => {
+    const payload = {
+      ...realisticPayload,
+      data: {
+        ...realisticPayload.data,
+        cols: [
+          {
+            name: 'state',
+            display_name: 'State',
+            base_type: 'type/Text',
+            semantic_type: 'type/State',
+            id: 42,
+          },
+        ],
+      },
+    };
+    const result = QueryResultSchema.parse(payload);
+    expect(result.cols[0]?.fieldId).toBe(42);
+  });
+
+  it('defaults fieldId to null when col id is absent', () => {
+    const result = QueryResultSchema.parse(realisticPayload);
+    expect(result.cols[0]?.fieldId).toBeNull();
+    expect(result.cols[1]?.fieldId).toBeNull();
+  });
+
+  it('sets fieldId to null when col id is not a number (e.g. a field-literal name)', () => {
+    const payload = {
+      ...realisticPayload,
+      data: {
+        ...realisticPayload.data,
+        cols: [
+          {
+            name: 'category',
+            display_name: 'Category',
+            base_type: 'type/Text',
+            // Aggregations / native queries can carry a non-numeric id.
+            id: ['field', 'category', null],
+          },
+          {
+            name: 'count',
+            display_name: 'Count',
+            base_type: 'type/Integer',
+            id: null,
+          },
+        ],
+      },
+    };
+    const result = QueryResultSchema.parse(payload);
+    expect(result.cols[0]?.fieldId).toBeNull();
+    expect(result.cols[1]?.fieldId).toBeNull();
   });
 
   it('defaults status to "completed" when status is absent', () => {

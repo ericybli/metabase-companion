@@ -6,12 +6,14 @@ const dimCol = {
   displayName: 'Step',
   baseType: 'type/Text',
   semanticType: null,
+  fieldId: null,
 };
 const metricCol = {
   name: 'count',
   displayName: 'Count',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 function result(rows: [string, number][]): QueryResult {

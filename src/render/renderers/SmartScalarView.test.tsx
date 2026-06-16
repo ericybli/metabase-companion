@@ -6,8 +6,14 @@ import { SmartScalarView } from './SmartScalarView';
 import type { QueryResult } from '@/api/schemas';
 
 const cols = [
-  { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
-  { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
+  { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null, fieldId: null },
+  {
+    name: 'total',
+    displayName: 'Total',
+    baseType: 'type/Integer',
+    semanticType: null,
+    fieldId: null,
+  },
 ];
 
 function series(rows: unknown[][]): QueryResult {

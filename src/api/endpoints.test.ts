@@ -151,7 +151,15 @@ describe('endpoints', () => {
     );
     expect(result).toEqual({
       rows: [[10], [20]],
-      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 2,
       status: 'completed',
       error: null,
@@ -237,12 +245,19 @@ describe('endpoints', () => {
     expect(result).toEqual({
       rows: [['Alice', 100]],
       cols: [
-        { name: 'name', displayName: 'Name', baseType: 'type/Text', semanticType: null },
+        {
+          name: 'name',
+          displayName: 'Name',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
         {
           name: 'revenue',
           displayName: 'Revenue',
           baseType: 'type/Float',
           semanticType: 'type/Currency',
+          fieldId: null,
         },
       ],
       rowCount: 1,

@@ -109,7 +109,12 @@ export function WaterfallChartView({
     if (onPointSelect) {
       const labels = steps.map((s) => s.label);
       const values = steps.map((s) => s.value);
-      const info = buildPointSelectInfo(i, labels, [{ name: model.measureName, values }]);
+      const info = buildPointSelectInfo(
+        i,
+        labels,
+        [{ name: model.measureName, values }],
+        model.dimension,
+      );
       if (info) {
         onPointSelect(info);
       }

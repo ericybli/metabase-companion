@@ -62,10 +62,11 @@ export interface PieModel {
   /** Display name of the dimension column. */
   dimensionName: string;
   /**
-   * Raw name of the dimension column (`QueryColumn.name`), passed through to the
-   * drill cross-filter so a clicked slice maps back to a dashboard parameter.
+   * The dimension column — its raw name (`QueryColumn.name`) and backing field id
+   * — passed through to the drill cross-filter so a clicked slice maps back to a
+   * dashboard parameter (by field id when present, else by name).
    */
-  dimensionColumnName: string;
+  dimension: { name: string; fieldId: number | null };
 }
 
 /** Coerce a raw cell to a finite number, or null when it isn't numeric. */
@@ -298,7 +299,7 @@ export function buildPieModel(
     totalText: formatValue(total, metricCol),
     metricName: metricCol.displayName,
     dimensionName: dimCol.displayName,
-    dimensionColumnName: dimCol.name,
+    dimension: { name: dimCol.name, fieldId: dimCol.fieldId },
   };
 }
 

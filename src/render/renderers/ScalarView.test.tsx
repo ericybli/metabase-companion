@@ -8,7 +8,15 @@ describe('ScalarView', () => {
   it('shows the formatted single value', async () => {
     const result: QueryResult = {
       rows: [[42]],
-      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
       status: 'completed',
       error: null,
@@ -20,7 +28,15 @@ describe('ScalarView', () => {
   it('shows a no-data message when there are no rows', async () => {
     const result: QueryResult = {
       rows: [],
-      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 0,
       status: 'completed',
       error: null,
@@ -33,8 +49,20 @@ describe('ScalarView', () => {
     const result: QueryResult = {
       rows: [['label', 99]],
       cols: [
-        { name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
       status: 'completed',
@@ -48,7 +76,15 @@ describe('ScalarView', () => {
   it('falls back to the first column when no numeric column exists', async () => {
     const result: QueryResult = {
       rows: [['hello']],
-      cols: [{ name: 'msg', displayName: 'Message', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'msg',
+          displayName: 'Message',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
       status: 'completed',
       error: null,

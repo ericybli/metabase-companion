@@ -198,6 +198,13 @@ export interface QueryColumn {
   displayName: string;
   baseType: string; // e.g. 'type/Integer','type/Float','type/Text','type/DateTime'
   semanticType: string | null; // e.g. 'type/Currency','type/Percentage', or null
+  /**
+   * Backing field id when the column maps to a real database field (the raw col's
+   * numeric `id`); null for aggregations, expressions, or any non-numeric id.
+   * Plumbed end-to-end so a tapped dimension can be matched to a dashboard
+   * parameter by field id (not just by name) in the cross-filter resolver.
+   */
+  fieldId: number | null;
 }
 export interface QueryResult {
   rows: unknown[][];
@@ -213,6 +220,7 @@ const QueryColumnSchema = z
     display_name: z.string(),
     base_type: z.string(),
     semantic_type: z.string().nullable().optional(),
+    id: z.unknown().optional(),
   })
   .passthrough()
   .transform(
@@ -221,6 +229,7 @@ const QueryColumnSchema = z
       displayName: raw.display_name,
       baseType: raw.base_type,
       semanticType: raw.semantic_type ?? null,
+      fieldId: typeof raw.id === 'number' ? raw.id : null,
     }),
   );
 

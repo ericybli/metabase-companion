@@ -5,8 +5,20 @@ import { PieChartView } from './PieChartView';
 import type { QueryResult } from '@/api/schemas';
 
 const cols = [
-  { name: 'category', displayName: 'Category', baseType: 'type/Text', semanticType: null },
-  { name: 'sales', displayName: 'Sales', baseType: 'type/Integer', semanticType: null },
+  {
+    name: 'category',
+    displayName: 'Category',
+    baseType: 'type/Text',
+    semanticType: null,
+    fieldId: null,
+  },
+  {
+    name: 'sales',
+    displayName: 'Sales',
+    baseType: 'type/Integer',
+    semanticType: null,
+    fieldId: null,
+  },
 ];
 
 function result(rows: [string, number][]): QueryResult {
@@ -131,7 +143,15 @@ describe('PieChartView', () => {
   it('shows no-data when there is no numeric metric column', async () => {
     const r: QueryResult = {
       rows: [['a'], ['b']],
-      cols: [{ name: 'label', displayName: 'Label', baseType: 'type/Text', semanticType: null }],
+      cols: [
+        {
+          name: 'label',
+          displayName: 'Label',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 2,
       status: 'completed',
       error: null,

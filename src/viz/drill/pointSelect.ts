@@ -65,7 +65,8 @@ export interface PointSelectSeries {
  */
 export interface PointSelectDimension {
   name: string;
-  fieldId?: number;
+  /** Backing field id; `null`/absent enables the name-only fallback match. */
+  fieldId?: number | null;
 }
 
 /** Coerce a possibly-null/non-finite series value to a finite number (0 fallback). */

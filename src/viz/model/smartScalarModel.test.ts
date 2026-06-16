@@ -6,12 +6,19 @@ import {
 } from './smartScalarModel';
 import type { QueryResult } from '@/api/schemas';
 
-const dimCol = { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null };
+const dimCol = {
+  name: 'month',
+  displayName: 'Month',
+  baseType: 'type/Text',
+  semanticType: null,
+  fieldId: null,
+};
 const metricCol = {
   name: 'total',
   displayName: 'Total',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 function series(rows: unknown[][]): QueryResult {
@@ -182,8 +189,8 @@ describe('buildSmartScalarModel', () => {
     const result: QueryResult = {
       rows: [['a', 'b']],
       cols: [
-        { name: 'x', displayName: 'X', baseType: 'type/Text', semanticType: null },
-        { name: 'y', displayName: 'Y', baseType: 'type/Text', semanticType: null },
+        { name: 'x', displayName: 'X', baseType: 'type/Text', semanticType: null, fieldId: null },
+        { name: 'y', displayName: 'Y', baseType: 'type/Text', semanticType: null, fieldId: null },
       ],
       rowCount: 1,
       status: 'completed',
@@ -215,8 +222,20 @@ describe('buildSmartScalarModel', () => {
       ],
       cols: [
         dimCol,
-        { name: 'total', displayName: 'Total', baseType: 'type/Integer', semanticType: null },
-        { name: 'cost', displayName: 'Cost', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'total',
+          displayName: 'Total',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'cost',
+          displayName: 'Cost',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',

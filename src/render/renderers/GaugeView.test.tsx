@@ -10,6 +10,7 @@ const metricCol = {
   displayName: 'Score',
   baseType: 'type/Integer',
   semanticType: null,
+  fieldId: null,
 };
 
 function single(value: unknown): QueryResult {

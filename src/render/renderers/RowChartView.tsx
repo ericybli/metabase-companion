@@ -179,8 +179,7 @@ export function RowChartView({
         values: s.values,
         hidden: hidden[i] ?? false,
       }));
-      const dimension = chart.dimensionColumnName ? { name: chart.dimensionColumnName } : undefined;
-      const info = buildPointSelectInfo(index, labels, pointSeries, dimension);
+      const info = buildPointSelectInfo(index, labels, pointSeries, chart.dimension);
       if (info) {
         onPointSelect(info);
       }

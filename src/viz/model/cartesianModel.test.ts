@@ -19,6 +19,7 @@ function makeCol(
 ): QueryColumn {
   return {
     semanticType: null,
+    fieldId: null,
     ...overrides,
   };
 }
@@ -41,6 +42,7 @@ function chartResult(
         displayName: m.name,
         baseType: 'type/Float',
         semanticType: m.semanticType ?? null,
+        fieldId: null,
       }),
     ),
   ];

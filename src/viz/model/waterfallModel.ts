@@ -42,6 +42,14 @@ export interface WaterfallModel {
   steps: WaterfallStep[];
   /** Y-axis domain spanning every bar edge (including 0 and the total). */
   domain: AxisDomain;
+  /**
+   * The resolved dimension (category) column — its raw name (`QueryColumn.name`)
+   * and backing field id — passed through to the drill cross-filter so a tapped
+   * step maps back to a dashboard parameter (by field id when present, else by
+   * name). Undefined when no dimension column resolved (steps fall back to a
+   * positional label).
+   */
+  dimension?: { name: string; fieldId: number | null };
 }
 
 /** Default colors when vizSettings don't specify them. */
@@ -193,5 +201,7 @@ export function buildWaterfallModel(
     tickCount: WATERFALL_TICK_COUNT,
   }) ?? { min: 0, max: 1 };
 
-  return { measureName: measure.displayName, steps, domain };
+  const dimensionRef = dimension ? { name: dimension.name, fieldId: dimension.fieldId } : undefined;
+
+  return { measureName: measure.displayName, steps, domain, dimension: dimensionRef };
 }

@@ -63,6 +63,7 @@ describe('DashboardScreen', () => {
                 displayName: 'Revenue',
                 baseType: 'type/Integer',
                 semanticType: null,
+                fieldId: null,
               },
             ],
             rowCount: 1,
@@ -71,8 +72,20 @@ describe('DashboardScreen', () => {
         return Promise.resolve({
           rows: [['Acme', 7]],
           cols: [
-            { name: 'name', displayName: 'Customer', baseType: 'type/Text', semanticType: null },
-            { name: 'orders', displayName: 'Orders', baseType: 'type/Integer', semanticType: null },
+            {
+              name: 'name',
+              displayName: 'Customer',
+              baseType: 'type/Text',
+              semanticType: null,
+              fieldId: null,
+            },
+            {
+              name: 'orders',
+              displayName: 'Orders',
+              baseType: 'type/Integer',
+              semanticType: null,
+              fieldId: null,
+            },
           ],
           rowCount: 1,
         });
@@ -105,7 +118,13 @@ describe('DashboardScreen', () => {
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[42]],
       cols: [
-        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
     });
@@ -139,7 +158,13 @@ describe('DashboardScreen', () => {
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[42]],
       cols: [
-        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
     });
@@ -186,8 +211,20 @@ describe('DashboardScreen', () => {
         ['Mar', 15],
       ],
       cols: [
-        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
-        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'month',
+          displayName: 'Month',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'value',
+          displayName: 'Value',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 3,
     });
@@ -234,8 +271,20 @@ describe('DashboardScreen', () => {
         ['Feb', 20],
       ],
       cols: [
-        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
-        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'month',
+          displayName: 'Month',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'value',
+          displayName: 'Value',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
     });
@@ -275,8 +324,20 @@ describe('DashboardScreen', () => {
         ['Feb', 20],
       ],
       cols: [
-        { name: 'month', displayName: 'Month', baseType: 'type/Text', semanticType: null },
-        { name: 'value', displayName: 'Value', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'month',
+          displayName: 'Month',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'value',
+          displayName: 'Value',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
     });
@@ -339,7 +400,15 @@ describe('DashboardScreen', () => {
     });
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[99]],
-      cols: [{ name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
       status: 'completed',
       error: null,
@@ -382,7 +451,15 @@ describe('DashboardScreen', () => {
     });
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[1]],
-      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'v',
+          displayName: 'V',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
     });
 
@@ -425,7 +502,15 @@ describe('DashboardScreen', () => {
     });
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[42]],
-      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'v',
+          displayName: 'V',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
     });
 
@@ -478,7 +563,15 @@ describe('DashboardScreen', () => {
     });
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[1]],
-      cols: [{ name: 'v', displayName: 'V', baseType: 'type/Integer', semanticType: null }],
+      cols: [
+        {
+          name: 'v',
+          displayName: 'V',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
       rowCount: 1,
     });
 
@@ -507,7 +600,13 @@ describe('DashboardScreen', () => {
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[42]],
       cols: [
-        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
     });
@@ -541,7 +640,13 @@ describe('DashboardScreen', () => {
     mockRunDashcardQuery.mockResolvedValue({
       rows: [[42]],
       cols: [
-        { name: 'revenue', displayName: 'Revenue', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'revenue',
+          displayName: 'Revenue',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 1,
     });
@@ -582,8 +687,20 @@ describe('DashboardScreen', () => {
         ['Texas', 540],
       ],
       cols: [
-        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -631,8 +748,20 @@ describe('DashboardScreen', () => {
         ['Texas', 540],
       ],
       cols: [
-        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -711,8 +840,20 @@ describe('DashboardScreen', () => {
         ['Texas', 540],
       ],
       cols: [
-        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -775,8 +916,20 @@ describe('DashboardScreen', () => {
         ['Texas', 540],
       ],
       cols: [
-        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -841,8 +994,20 @@ describe('DashboardScreen', () => {
         ['Texas', 540],
       ],
       cols: [
-        { name: 'state', displayName: 'State', baseType: 'type/Text', semanticType: null },
-        { name: 'count', displayName: 'Count', baseType: 'type/Integer', semanticType: null },
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          fieldId: null,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
       ],
       rowCount: 2,
       status: 'completed',
@@ -861,6 +1026,98 @@ describe('DashboardScreen', () => {
     await waitFor(() =>
       expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
         { id: 'p_state', value: 'Wisconsin' },
+      ]),
+    );
+  });
+
+  it('matches the clicked column to its mapped parameter by FIELD ID (not name)', async () => {
+    mockGetDashboard.mockResolvedValue({
+      id: 9,
+      name: 'Sales',
+      description: null,
+      cards: [
+        {
+          dashcardId: 1,
+          cardId: 5,
+          name: 'By State',
+          display: 'bar',
+          vizSettings: {},
+          // The mapping references field id 42. The clicked column's NAME is
+          // 'state', which does NOT match the parameter's name ('Region') nor a
+          // name-component in the target (the target carries a numeric field id,
+          // no column name) — only the field id matches. The field-id path must
+          // still resolve p_region.
+          parameterMappings: [
+            { parameterId: 'p_region', target: ['dimension', ['field', 42, null]] },
+          ],
+        },
+      ],
+      parameters: [
+        {
+          id: 'p_region',
+          slug: 'region',
+          name: 'Region',
+          type: 'string/=',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+        {
+          id: 'p_unrelated',
+          slug: 'unrelated',
+          name: 'Unrelated',
+          type: 'category',
+          default: null,
+          values: [],
+          valuesSourceType: '',
+        },
+      ],
+    });
+    mockRunDashcardQuery.mockResolvedValue({
+      rows: [
+        ['Wisconsin', 312],
+        ['Texas', 540],
+      ],
+      cols: [
+        {
+          name: 'state',
+          displayName: 'State',
+          baseType: 'type/Text',
+          semanticType: null,
+          // The clicked dimension column carries field id 42.
+          fieldId: 42,
+        },
+        {
+          name: 'count',
+          displayName: 'Count',
+          baseType: 'type/Integer',
+          semanticType: null,
+          fieldId: null,
+        },
+      ],
+      rowCount: 2,
+      status: 'completed',
+      error: null,
+    });
+
+    await render(<DashboardScreen />, { wrapper });
+
+    // Tap the first column to open the drill sheet.
+    await waitFor(() => expect(screen.getByTestId('chart-touch-0')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('chart-touch-0'));
+
+    // The field-id match selects p_region even though the column name ('state')
+    // differs from the parameter's name ('Region'); the unrelated settable
+    // parameter is suppressed because a precise mapping resolved.
+    const mappedBtn = await screen.findByTestId('drill-filter-p_region');
+    expect(screen.getByText('Filter: Region = Wisconsin')).toBeTruthy();
+    expect(screen.queryByTestId('drill-filter-p_unrelated')).toBeNull();
+
+    // Tapping it sets the field-id-matched parameter id and refetches.
+    fireEvent.press(mappedBtn);
+    await waitFor(() =>
+      expect(mockRunDashcardQuery).toHaveBeenCalledWith({}, 9, 1, 5, [
+        { id: 'p_region', value: 'Wisconsin' },
       ]),
     );
   });
