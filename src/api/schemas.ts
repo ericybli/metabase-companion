@@ -247,6 +247,55 @@ export const QueryResultSchema = z
     }),
   );
 
+// ---- Search results (GET /api/search) ----
+// Metabase returns `{ data: [...], ... }` where each entry describes one
+// searchable item. `id` can be a number or string and `model` identifies the
+// kind ('dashboard','card','dataset','metric','table',…). We keep only the
+// fields we render and tolerate any extra/missing keys defensively.
+export interface SearchResult {
+  id: number | string;
+  name: string;
+  model: string;
+  description: string | null;
+}
+
+const SearchResultItemSchema = z
+  .object({
+    id: z.union([z.number(), z.string()]),
+    name: z.string().nullable().optional(),
+    model: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .transform(
+    (raw): SearchResult => ({
+      id: raw.id,
+      name: raw.name ?? '',
+      model: raw.model ?? '',
+      description: raw.description ?? null,
+    }),
+  );
+
+// Unwraps the `{ data: [...] }` envelope; also tolerates a bare array. Entries
+// that fail to parse (e.g. missing id) are dropped rather than failing the page.
+export const SearchResultSchema = z.union([
+  z
+    .object({ data: z.array(z.unknown()) })
+    .passthrough()
+    .transform((o): SearchResult[] =>
+      o.data.flatMap((item) => {
+        const parsed = SearchResultItemSchema.safeParse(item);
+        return parsed.success ? [parsed.data] : [];
+      }),
+    ),
+  z.array(z.unknown()).transform((arr): SearchResult[] =>
+    arr.flatMap((item) => {
+      const parsed = SearchResultItemSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  ),
+]);
+
 const DashcardParameterMappingSchema = z
   .object({
     parameter_id: z.string().optional(),

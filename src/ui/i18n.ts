@@ -47,7 +47,13 @@ export const resources = {
         title: 'Dashboards',
         empty: 'No dashboards yet.',
       },
-      tabs: { home: 'Home' },
+      tabs: { home: 'Home', search: 'Search' },
+      search: {
+        title: 'Search',
+        placeholder: 'Search dashboards, questions…',
+        prompt: 'Type to search.',
+        empty: 'No results.',
+      },
       dashboard: {
         back: 'Back',
         empty: 'This dashboard has no cards.',
@@ -136,7 +142,13 @@ export const resources = {
         title: '仪表盘',
         empty: '还没有仪表盘。',
       },
-      tabs: { home: '首页' },
+      tabs: { home: '首页', search: '搜索' },
+      search: {
+        title: '搜索',
+        placeholder: '搜索仪表盘、问题…',
+        prompt: '输入以搜索。',
+        empty: '没有结果。',
+      },
       dashboard: {
         back: '返回',
         empty: '该仪表盘没有卡片。',

@@ -6,6 +6,7 @@ import {
   DashboardDetailSchema,
   QueryResultSchema,
   CardDetailSchema,
+  SearchResultSchema,
 } from './schemas';
 
 describe('QueryResultSchema', () => {
@@ -673,5 +674,34 @@ describe('SessionTokenSchema', () => {
 
   it('rejects a payload missing id', () => {
     expect(() => SessionTokenSchema.parse({})).toThrow();
+  });
+});
+
+describe('SearchResultSchema', () => {
+  it('unwraps { data } and normalizes each entry', () => {
+    expect(
+      SearchResultSchema.parse({
+        data: [
+          { id: 1, name: 'A', model: 'dashboard', description: 'd', extra: true },
+          { id: '2', name: 'B', model: 'card' },
+        ],
+        total: 2,
+      }),
+    ).toEqual([
+      { id: 1, name: 'A', model: 'dashboard', description: 'd' },
+      { id: '2', name: 'B', model: 'card', description: null },
+    ]);
+  });
+
+  it('tolerates a bare array envelope', () => {
+    expect(SearchResultSchema.parse([{ id: 7, name: 'X', model: 'table' }])).toEqual([
+      { id: 7, name: 'X', model: 'table', description: null },
+    ]);
+  });
+
+  it('defaults missing name/model and drops entries without an id', () => {
+    expect(
+      SearchResultSchema.parse({ data: [{ id: 3 }, { name: 'no id', model: 'card' }] }),
+    ).toEqual([{ id: 3, name: '', model: '', description: null }]);
   });
 });

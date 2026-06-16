@@ -6,12 +6,14 @@ import {
   DashboardDetailSchema,
   DashboardListSchema,
   QueryResultSchema,
+  SearchResultSchema,
   SessionPropertiesSchema,
   type CardDetail,
   type CurrentUser,
   type DashboardDetail,
   type DashboardSummary,
   type QueryResult,
+  type SearchResult,
   type SessionProperties,
 } from './schemas';
 
@@ -84,6 +86,14 @@ export function getCard(client: MetabaseClient, id: number): Promise<CardDetail>
  */
 export function runCardQuery(client: MetabaseClient, cardId: number): Promise<QueryResult> {
   return client.post(`/api/card/${cardId}/query`, {}, QueryResultSchema);
+}
+
+/**
+ * GET /api/search?q=… — global search across dashboards, questions, datasets,
+ * metrics, tables, etc. Unwraps the `{ data: [...] }` envelope into SearchResult[].
+ */
+export function search(client: MetabaseClient, q: string): Promise<SearchResult[]> {
+  return client.get(`/api/search?q=${encodeURIComponent(q)}`, SearchResultSchema);
 }
 
 /**

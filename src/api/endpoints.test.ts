@@ -8,6 +8,7 @@ import {
   runDashcardQuery,
   runCardQuery,
   getParameterValues,
+  search,
 } from './endpoints';
 import type { MetabaseClient } from './client';
 
@@ -276,5 +277,46 @@ describe('endpoints', () => {
     const client = { post } as unknown as MetabaseClient;
 
     await expect(getParameterValues(client, 1, 'p')).resolves.toEqual([]);
+  });
+
+  it('search GETs /api/search with the encoded query and unwraps { data }', async () => {
+    const raw = {
+      data: [
+        { id: 12, name: 'Sales Dash', model: 'dashboard', description: 'KPIs' },
+        { id: 'tbl-3', name: 'Orders', model: 'table', description: null },
+        { id: 5, name: 'Revenue', model: 'card' },
+      ],
+      total: 3,
+    };
+    const get = jest.fn(async (_path: string, schema: { parse: (v: unknown) => unknown }) =>
+      schema.parse(raw),
+    );
+    const client = { get } as unknown as MetabaseClient;
+
+    const results = await search(client, 'sales & co');
+
+    expect(get).toHaveBeenCalledWith('/api/search?q=sales%20%26%20co', expect.anything());
+    expect(results).toEqual([
+      { id: 12, name: 'Sales Dash', model: 'dashboard', description: 'KPIs' },
+      { id: 'tbl-3', name: 'Orders', model: 'table', description: null },
+      { id: 5, name: 'Revenue', model: 'card', description: null },
+    ]);
+  });
+
+  it('search drops malformed entries (missing id) rather than failing the page', async () => {
+    const raw = {
+      data: [
+        { name: 'no id', model: 'card' },
+        { id: 9, name: 'ok', model: 'card' },
+      ],
+    };
+    const get = jest.fn(async (_path: string, schema: { parse: (v: unknown) => unknown }) =>
+      schema.parse(raw),
+    );
+    const client = { get } as unknown as MetabaseClient;
+
+    await expect(search(client, 'q')).resolves.toEqual([
+      { id: 9, name: 'ok', model: 'card', description: null },
+    ]);
   });
 });
