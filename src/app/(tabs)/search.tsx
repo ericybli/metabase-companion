@@ -17,8 +17,7 @@ import { createInstanceClient } from '@/api/instanceClient';
 import { search } from '@/api/endpoints';
 import type { SearchResult } from '@/api/schemas';
 import { useInstancesStore } from '@/store/instances';
-
-type InstancesState = { activeInstanceId: string | null };
+import type { InstancesState } from '@/store/instances';
 
 /** Wait this long after the last keystroke before firing a query. */
 const DEBOUNCE_MS = 300;
@@ -82,7 +81,7 @@ export default function SearchScreen(): React.ReactElement {
     if (isLoading) {
       return (
         <View style={styles.center}>
-          <ActivityIndicator color={theme.colors.primary} />
+          <ActivityIndicator testID="search-loading" color={theme.colors.primary} />
         </View>
       );
     }
@@ -109,6 +108,8 @@ export default function SearchScreen(): React.ReactElement {
             <Pressable
               testID={`search-result-${item.model}-${item.id}`}
               accessibilityRole="button"
+              accessibilityLabel={item.name}
+              accessibilityHint={openable ? t('search.openHint', { model: item.model }) : undefined}
               disabled={!openable}
               onPress={() => onPressResult(item)}
               style={[

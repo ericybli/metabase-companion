@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/ui/i18n';
+import { ApiException } from '@/api/errors';
 import SearchScreen from './search';
 
 const mockPush = jest.fn();
@@ -70,5 +71,26 @@ describe('SearchScreen', () => {
 
     await user.type(screen.getByTestId('search-input'), 'zzz');
     await waitFor(() => expect(screen.getByText('No results.')).toBeTruthy());
+  });
+
+  it('shows a loading indicator while the query is in flight', async () => {
+    // A promise that never resolves keeps the query in its pending/loading state.
+    mockSearch.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    await render(<SearchScreen />, { wrapper });
+
+    await user.type(screen.getByTestId('search-input'), 'load');
+    await waitFor(() => expect(screen.getByTestId('search-loading')).toBeTruthy());
+  });
+
+  it('shows the error hint with the error kind when the query rejects', async () => {
+    mockSearch.mockRejectedValue(new ApiException({ kind: 'notFound' }));
+    const user = userEvent.setup();
+    await render(<SearchScreen />, { wrapper });
+
+    await user.type(screen.getByTestId('search-input'), 'boom');
+    await waitFor(() =>
+      expect(screen.getByText('Something went wrong. Please try again. (notFound)')).toBeTruthy(),
+    );
   });
 });

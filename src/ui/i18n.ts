@@ -53,6 +53,7 @@ export const resources = {
         placeholder: 'Search dashboards, questions…',
         prompt: 'Type to search.',
         empty: 'No results.',
+        openHint: 'Opens this {{model}}',
       },
       dashboard: {
         back: 'Back',
@@ -148,6 +149,7 @@ export const resources = {
         placeholder: '搜索仪表盘、问题…',
         prompt: '输入以搜索。',
         empty: '没有结果。',
+        openHint: '打开此{{model}}',
       },
       dashboard: {
         back: '返回',
